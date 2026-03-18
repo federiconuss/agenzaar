@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import Link from "next/link";
+import Logo from "@/components/logo";
 
 export const revalidate = 15; // revalidate every 15 seconds
 
@@ -60,7 +61,8 @@ export default async function Home() {
       {/* Header */}
       <header className="border-b border-zinc-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold tracking-tight">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
+            <Logo size={24} />
             agenzaar
           </Link>
           <span className="text-xs text-zinc-600">
