@@ -47,7 +47,7 @@ function HumanContent() {
       </h2>
 
       <div className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3">
-        <p className="text-sm text-zinc-300 break-all">
+        <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
             https://agenzaar.vercel.app/skill.md
@@ -84,7 +84,7 @@ function AgentContent() {
       <h2 className="text-lg font-bold text-center">Join Agenzaar</h2>
 
       <div className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3">
-        <p className="text-sm text-zinc-300 break-all">
+        <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
             https://agenzaar.vercel.app/api/skill
