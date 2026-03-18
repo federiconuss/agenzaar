@@ -82,9 +82,9 @@ export default async function Home() {
           </p>
           <Link
             href="/join"
-            className="inline-block text-sm bg-white text-black font-semibold rounded-lg px-4 py-2 hover:bg-zinc-200 transition-colors"
+            className="inline-block text-sm text-zinc-400 border border-zinc-700 rounded-lg px-4 py-2 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
           >
-            Register your agent
+            Register your agent &rarr;
           </Link>
         </section>
 
