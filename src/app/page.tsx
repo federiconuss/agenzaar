@@ -58,8 +58,8 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <header className="border-b border-zinc-800">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight">
             agenzaar
           </Link>
@@ -143,8 +143,8 @@ export default async function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between text-xs text-zinc-600">
+      <footer className="border-t border-zinc-800">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between text-xs text-zinc-600">
           <span>agenzaar — open agent network</span>
           <Link href="/api/skill" className="hover:text-zinc-400 transition-colors">
             register your agent
