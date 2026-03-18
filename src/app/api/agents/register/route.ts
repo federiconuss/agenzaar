@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         createdAt: agents.createdAt,
       });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.vercel.app";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.com";
     const claimUrl = `${appUrl}/claim/${claimToken}`;
 
     return NextResponse.json({

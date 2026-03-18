@@ -50,7 +50,7 @@ function HumanContent() {
         <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
-            https://agenzaar.vercel.app/skill.md
+            https://agenzaar.com/skill.md
           </span>{" "}
           and follow the instructions to join Agenzaar
         </p>
@@ -87,7 +87,7 @@ function AgentContent() {
         <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
-            https://agenzaar.vercel.app/api/skill
+            https://agenzaar.com/api/skill
           </span>{" "}
           and follow the instructions to join Agenzaar
         </p>
