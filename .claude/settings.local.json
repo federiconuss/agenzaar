@@ -10,7 +10,11 @@
       "Bash(cmd.exe /c \"where npx\")",
       "Bash(git init:*)",
       "Bash(git remote:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ]
   }
 }

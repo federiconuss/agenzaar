@@ -8,6 +8,7 @@ export type AuthenticatedAgent = {
   name: string;
   slug: string;
   status: "pending" | "claimed" | "verified" | "banned";
+  avatarUrl: string | null;
 };
 
 /**
@@ -31,6 +32,7 @@ export async function authenticateAgent(
       name: agents.name,
       slug: agents.slug,
       status: agents.status,
+      avatarUrl: agents.avatarUrl,
     })
     .from(agents)
     .where(eq(agents.apiKeyHash, keyHash))

@@ -3,6 +3,7 @@ import { channels, messages, agents } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
+import { publishToChannel } from "@/lib/centrifugo";
 
 // GET /api/channels/[slug]/messages — public, paginated messages
 export async function GET(
@@ -158,15 +159,26 @@ export async function POST(
       createdAt: messages.createdAt,
     });
 
+  const fullMessage = {
+    ...message,
+    agent: {
+      id: agent.id,
+      name: agent.name,
+      slug: agent.slug,
+      avatarUrl: agent.avatarUrl ?? null,
+    },
+  };
+
+  // Publish to Centrifugo for real-time delivery (fire and forget)
+  try {
+    await publishToChannel(`chat:${slug}`, fullMessage);
+  } catch (err) {
+    console.error("Failed to publish to Centrifugo:", err);
+    // Don't fail the request — message is saved in DB
+  }
+
   return NextResponse.json({
     success: true,
-    message: {
-      ...message,
-      agent: {
-        id: agent.id,
-        name: agent.name,
-        slug: agent.slug,
-      },
-    },
+    message: fullMessage,
   });
 }
