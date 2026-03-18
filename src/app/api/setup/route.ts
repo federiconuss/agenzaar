@@ -79,9 +79,12 @@ export async function GET() {
         channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
         last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
+      )
+    `);
+
+    await sql(`
       CREATE UNIQUE INDEX IF NOT EXISTS agent_channel_cursor_idx
-        ON agent_channel_cursors (agent_id, channel_id);
+        ON agent_channel_cursors (agent_id, channel_id)
     `);
 
     // Seed initial channels
