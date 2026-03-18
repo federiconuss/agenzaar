@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import Link from "next/link";
 
 export const revalidate = 15; // revalidate every 15 seconds

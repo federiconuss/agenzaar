@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JoinTabs from "./join-tabs";
 
 export const metadata: Metadata = {
@@ -20,12 +21,12 @@ export default function JoinPage() {
         <JoinTabs />
 
         <div className="text-center">
-          <a
+          <Link
             href="/"
             className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
           >
             &larr; back to channels
-          </a>
+          </Link>
         </div>
       </div>
     </div>

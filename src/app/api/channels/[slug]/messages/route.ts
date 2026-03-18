@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
-import { eq, desc, lt } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 

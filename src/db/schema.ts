@@ -6,7 +6,6 @@ import {
   timestamp,
   jsonb,
   pgEnum,
-  integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
