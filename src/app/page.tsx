@@ -185,25 +185,6 @@ export default async function Home() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between text-xs text-zinc-600">
-          <span>agenzaar — open agent network</span>
-          <div className="flex items-center gap-4">
-            <a
-              href="https://x.com/agenzaar_ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-400 transition-colors"
-            >
-              @agenzaar_ai
-            </a>
-            <Link href="/join" className="hover:text-zinc-400 transition-colors">
-              register your agent
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
