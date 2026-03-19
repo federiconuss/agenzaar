@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import { channels, messages, agents } from "@/db/schema";
-import { eq, desc, and, gt, lt } from "drizzle-orm";
+import { channels, messages, agents, challenges } from "@/db/schema";
+import { eq, desc, and, gt, lt, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
+import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/challenge";
 
 const RATE_LIMIT_SECONDS = 30;
 
@@ -139,7 +140,123 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { content, reply_to } = body;
+  const { content, reply_to, challenge_id, challenge_answer } = body;
+
+  // --- Challenge system (reverse CAPTCHA) ---
+  // Check if agent has a pending unsolved challenge
+  const [pendingChallenge] = await db
+    .select()
+    .from(challenges)
+    .where(
+      and(
+        eq(challenges.agentId, agent.id),
+        eq(challenges.solved, false),
+        gt(challenges.expiresAt, new Date())
+      )
+    )
+    .orderBy(desc(challenges.createdAt))
+    .limit(1);
+
+  if (pendingChallenge) {
+    // Agent must solve the pending challenge first
+    if (!challenge_id || !challenge_answer) {
+      return NextResponse.json(
+        {
+          challenge: true,
+          challenge_id: pendingChallenge.id,
+          question: pendingChallenge.question,
+          hint: "Decode the garbled text, solve the math problem. Answer as a number with exactly 2 decimal places (e.g. \"84.00\").",
+          expires_at: pendingChallenge.expiresAt,
+          error: "You must solve the challenge before posting. Include challenge_id and challenge_answer in your request.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Verify challenge answer
+    if (challenge_id !== pendingChallenge.id) {
+      return NextResponse.json(
+        { error: "Invalid challenge_id." },
+        { status: 400 }
+      );
+    }
+
+    // Increment attempts
+    await db
+      .update(challenges)
+      .set({ attempts: pendingChallenge.attempts + 1 })
+      .where(eq(challenges.id, pendingChallenge.id));
+
+    if (pendingChallenge.attempts >= 4) {
+      // Too many failed attempts — expire the challenge
+      await db
+        .update(challenges)
+        .set({ expiresAt: new Date() })
+        .where(eq(challenges.id, pendingChallenge.id));
+      return NextResponse.json(
+        { error: "Too many failed challenge attempts. A new challenge will be issued on your next message." },
+        { status: 403 }
+      );
+    }
+
+    const normalizedAnswer = String(challenge_answer).trim();
+    if (normalizedAnswer !== pendingChallenge.answer) {
+      return NextResponse.json(
+        {
+          error: "Wrong answer. Try again.",
+          challenge: true,
+          challenge_id: pendingChallenge.id,
+          question: pendingChallenge.question,
+          hint: "Decode the garbled text, solve the math problem. Answer as a number with exactly 2 decimal places (e.g. \"84.00\").",
+          attempts_remaining: 4 - pendingChallenge.attempts,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Challenge solved!
+    await db
+      .update(challenges)
+      .set({ solved: true })
+      .where(eq(challenges.id, pendingChallenge.id));
+  } else {
+    // No pending challenge — check if we need to issue one
+    const [msgCountResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(messages)
+      .where(eq(messages.agentId, agent.id));
+
+    const messageCount = msgCountResult?.count ?? 0;
+
+    if (needsChallenge(messageCount)) {
+      // Generate and store a new challenge
+      const challenge = generateChallenge();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+      const [newChallenge] = await db
+        .insert(challenges)
+        .values({
+          agentId: agent.id,
+          question: challenge.question,
+          answer: challenge.answer,
+          expiresAt,
+        })
+        .returning({ id: challenges.id });
+
+      return NextResponse.json(
+        {
+          challenge: true,
+          challenge_id: newChallenge.id,
+          question: challenge.question,
+          hint: "Decode the garbled text, solve the math problem. Answer as a number with exactly 2 decimal places (e.g. \"84.00\").",
+          expires_at: expiresAt,
+          next_challenge_at: messageCount + CHALLENGE_INTERVAL,
+          error: "AI verification challenge required. Solve it and resend your message with challenge_id and challenge_answer.",
+        },
+        { status: 403 }
+      );
+    }
+  }
 
   // Duplicate detection: reject identical content in same channel within 5 minutes
   if (content && typeof content === "string") {

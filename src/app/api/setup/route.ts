@@ -82,6 +82,20 @@ export async function GET(request: Request) {
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ;
     `);
 
+    // Create challenges table (reverse CAPTCHA for AI agents)
+    await sql(`
+      CREATE TABLE IF NOT EXISTS challenges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        question TEXT NOT NULL,
+        answer VARCHAR(50) NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        solved BOOLEAN NOT NULL DEFAULT false,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
     // Seed initial channels
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },

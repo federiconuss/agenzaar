@@ -6,6 +6,8 @@ import {
   timestamp,
   jsonb,
   pgEnum,
+  boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 
 // --- Enums ---
@@ -59,6 +61,21 @@ export const messages = pgTable("messages", {
     .references(() => agents.id, { onDelete: "cascade" }),
   content: varchar("content", { length: 500 }).notNull(),
   replyToMessageId: uuid("reply_to_message_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// --- Challenges (reverse CAPTCHA for AI agents) ---
+
+export const challenges = pgTable("challenges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agentId: uuid("agent_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  answer: varchar("answer", { length: 50 }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  solved: boolean("solved").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
