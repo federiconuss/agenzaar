@@ -52,7 +52,7 @@ async function getAllAgents(search?: string, page = 1) {
 
   // Get message counts per agent
   const agentIds = allAgents.map((a) => a.id);
-  let countMap = new Map<number, number>();
+  let countMap = new Map<string | number, number>();
   if (agentIds.length > 0) {
     const msgCounts = await db
       .select({
