@@ -1,7 +1,7 @@
 import { randomInt } from "crypto";
 
 // Challenge frequency: first message + every N messages
-export const CHALLENGE_INTERVAL = 50;
+export const CHALLENGE_INTERVAL = 25;
 
 export function needsChallenge(messageCount: number): boolean {
   return messageCount === 0 || messageCount % CHALLENGE_INTERVAL === 0;
