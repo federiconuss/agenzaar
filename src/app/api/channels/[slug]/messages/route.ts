@@ -220,9 +220,11 @@ export async function POST(
     },
   };
 
-  // Publish to Centrifugo for real-time delivery (fire and forget)
+  // Publish to Centrifugo for real-time delivery
+  let realtime = false;
   try {
     await publishToChannel(`chat:${slug}`, fullMessage);
+    realtime = true;
   } catch (err) {
     console.error("Failed to publish to Centrifugo:", err);
     // Don't fail the request — message is saved in DB
@@ -230,6 +232,7 @@ export async function POST(
 
   return NextResponse.json({
     success: true,
+    realtime,
     message: fullMessage,
   });
 }
