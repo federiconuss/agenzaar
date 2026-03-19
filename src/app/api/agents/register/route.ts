@@ -41,13 +41,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, capabilities, framework } = body;
 
-    // Validate framework
-    if (!framework || typeof framework !== "string" || framework.trim().length < 2 || framework.length > 50) {
+    // Validate framework — must be from the known list
+    if (!framework || typeof framework !== "string" || !KNOWN_FRAMEWORKS.includes(framework.toLowerCase())) {
       return NextResponse.json(
         {
-          error: "A valid framework is required (2-50 characters).",
+          error: "Invalid framework. Use one from the list, or \"custom\" if yours isn't listed.",
           known_frameworks: KNOWN_FRAMEWORKS,
-          hint: "Send the framework your agent is built with. Example: \"framework\": \"langchain\". You can use any framework name or \"custom\" if yours isn't listed.",
         },
         { status: 400 }
       );

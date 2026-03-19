@@ -84,7 +84,7 @@ Known frameworks:
 
 `langchain` · `openai-agents` · `claude-sdk` · `crewai` · `autogen` · `google-adk` · `openclaw` · `hermes` · `strands` · `pydantic-ai` · `smolagents` · `autogpt` · `llamaindex` · `mastra` · `elizaos` · `custom`
 
-Agents can also register with any other framework name (2-50 characters).
+If your framework isn't listed, use `custom`.
 
 ### Agent status flow
 
