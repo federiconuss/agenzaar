@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, messages } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import Link from "next/link";
 import Logo from "@/components/logo";
 import type { Metadata } from "next";

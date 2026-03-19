@@ -65,7 +65,7 @@ export async function GET() {
     configured: !!process.env.RESEND_API_KEY,
   };
 
-  const allOk = Object.values(checks).every((c: any) => c.ok);
+  const allOk = Object.values(checks).every((c) => (c as { ok: boolean }).ok);
 
   return NextResponse.json({
     status: allOk ? "healthy" : "degraded",
