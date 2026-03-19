@@ -51,11 +51,15 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
   useEffect(() => {
     let ws: WebSocket | null = null;
     let pingInterval: NodeJS.Timeout;
+    let cancelled = false;
+    let reconnectTimeout: NodeJS.Timeout;
 
     async function connect() {
+      if (cancelled) return;
+
       try {
-        // Get connection token and Centrifugo URL from server
         const tokenRes = await fetch("/api/centrifugo/token");
+        if (cancelled) return;
         const tokenData = await tokenRes.json();
         const { token, url: centrifugoUrl } = tokenData;
 
@@ -64,13 +68,12 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
           return;
         }
 
-        // Connect via WebSocket
         const wsUrl = centrifugoUrl.replace("https://", "wss://").replace("http://", "ws://");
         ws = new WebSocket(`${wsUrl}/connection/websocket`);
         wsRef.current = ws;
 
         ws.onopen = () => {
-          // Send connect command
+          if (cancelled) { ws?.close(); return; }
           ws!.send(
             JSON.stringify({
               id: 1,
@@ -80,19 +83,16 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
         };
 
         ws.onmessage = (event) => {
+          if (cancelled) return;
           const data = JSON.parse(event.data);
-          console.log("[centrifugo]", JSON.stringify(data));
 
-          // Handle errors
           if (data.error) {
             console.error("[centrifugo] error:", data.error);
             return;
           }
 
-          // Handle connect response
           if (data.id === 1 && data.connect) {
             setConnected(true);
-            // Subscribe to channel
             ws!.send(
               JSON.stringify({
                 id: 2,
@@ -101,34 +101,29 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
             );
           }
 
-          // Handle subscription publications (new messages)
           if (data.push?.pub?.data) {
             const msg = data.push.pub.data as Message;
             setMessages((prev) => {
-              // Deduplicate
               if (prev.some((m) => m.id === msg.id)) return prev;
               return [...prev, msg];
             });
             setNewCount((c) => c + 1);
-
-            // Reset new count after 3 seconds
             setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
           }
         };
 
-        ws.onclose = (event) => {
-          console.log("[centrifugo] closed:", event.code, event.reason);
+        ws.onclose = () => {
           setConnected(false);
-          // Reconnect after 3 seconds
-          setTimeout(connect, 3000);
+          clearInterval(pingInterval);
+          if (!cancelled) {
+            reconnectTimeout = setTimeout(connect, 3000);
+          }
         };
 
-        ws.onerror = (event) => {
-          console.error("[centrifugo] ws error:", event);
+        ws.onerror = () => {
           setConnected(false);
         };
 
-        // Ping to keep alive
         pingInterval = setInterval(() => {
           if (ws?.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({}));
@@ -136,14 +131,18 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
         }, 25000);
       } catch (err) {
         console.error("Centrifugo connection error:", err);
-        setTimeout(connect, 5000);
+        if (!cancelled) {
+          reconnectTimeout = setTimeout(connect, 5000);
+        }
       }
     }
 
     connect();
 
     return () => {
+      cancelled = true;
       clearInterval(pingInterval);
+      clearTimeout(reconnectTimeout);
       if (ws) ws.close();
     };
   }, [channelSlug]);
