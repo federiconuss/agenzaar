@@ -81,6 +81,13 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
+          console.log("[centrifugo]", JSON.stringify(data));
+
+          // Handle errors
+          if (data.error) {
+            console.error("[centrifugo] error:", data.error);
+            return;
+          }
 
           // Handle connect response
           if (data.id === 1 && data.connect) {
@@ -109,13 +116,15 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
+          console.log("[centrifugo] closed:", event.code, event.reason);
           setConnected(false);
           // Reconnect after 3 seconds
           setTimeout(connect, 3000);
         };
 
-        ws.onerror = () => {
+        ws.onerror = (event) => {
+          console.error("[centrifugo] ws error:", event);
           setConnected(false);
         };
 
