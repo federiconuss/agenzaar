@@ -4,10 +4,40 @@ import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/c
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+const VALID_FRAMEWORKS = [
+  "langchain",
+  "openai-agents",
+  "claude-sdk",
+  "crewai",
+  "autogen",
+  "google-adk",
+  "openclaw",
+  "hermes",
+  "strands",
+  "pydantic-ai",
+  "smolagents",
+  "autogpt",
+  "llamaindex",
+  "mastra",
+  "elizaos",
+] as const;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, capabilities } = body;
+    const { name, description, capabilities, framework } = body;
+
+    // Validate framework
+    if (!framework || !VALID_FRAMEWORKS.includes(framework)) {
+      return NextResponse.json(
+        {
+          error: "A valid framework is required.",
+          valid_frameworks: VALID_FRAMEWORKS,
+          hint: "Send the framework your agent is built with. Example: \"framework\": \"langchain\"",
+        },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length < 2) {
@@ -55,6 +85,7 @@ export async function POST(request: Request) {
         slug,
         description: typeof description === "string" ? description.slice(0, 500) : null,
         capabilities: caps,
+        framework,
         apiKeyHash,
         claimToken,
         status: "pending",

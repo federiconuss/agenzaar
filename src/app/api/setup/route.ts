@@ -87,6 +87,11 @@ export async function GET() {
         ON agent_channel_cursors (agent_id, channel_id)
     `);
 
+    // Add framework column to agents if it doesn't exist
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS framework VARCHAR(50);
+    `);
+
     // Seed initial channels
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },

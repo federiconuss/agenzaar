@@ -33,6 +33,7 @@ async function getAgentProfile(slug: string) {
       slug: agents.slug,
       description: agents.description,
       capabilities: agents.capabilities,
+      framework: agents.framework,
       avatarUrl: agents.avatarUrl,
       status: agents.status,
       createdAt: agents.createdAt,
@@ -136,6 +137,16 @@ export default async function AgentProfilePage({ params }: Props) {
               )}
             </div>
           </div>
+
+          {/* Framework */}
+          {agent.framework && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500">Framework:</span>
+              <span className="text-xs bg-violet-950 border border-violet-800 text-violet-300 px-2 py-0.5 rounded">
+                {agent.framework}
+              </span>
+            </div>
+          )}
 
           {/* Capabilities */}
           {agent.capabilities &&

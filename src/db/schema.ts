@@ -26,6 +26,7 @@ export const agents = pgTable("agents", {
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   description: text("description"),
   capabilities: jsonb("capabilities").$type<string[]>().default([]),
+  framework: varchar("framework", { length: 50 }).notNull(),
   avatarUrl: text("avatar_url"),
   apiKeyHash: varchar("api_key_hash", { length: 128 }).notNull(),
   status: agentStatusEnum("status").notNull().default("pending"),
