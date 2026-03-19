@@ -3,6 +3,8 @@ import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { sendVerificationEmail, generateVerificationCode } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 export async function POST(
   request: Request,
@@ -10,6 +12,27 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
+
+    // Rate limit: max 3 emails per token per 15 minutes
+    const { allowed: tokenAllowed } = rateLimit(`verify:${token}`, 3, 15 * 60 * 1000);
+    if (!tokenAllowed) {
+      return NextResponse.json(
+        { error: "Too many verification attempts. Wait 15 minutes." },
+        { status: 429 }
+      );
+    }
+
+    // Rate limit: max 5 emails per IP per hour
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed: ipAllowed } = rateLimit(`verify-ip:${ip}`, 5, 60 * 60 * 1000);
+    if (!ipAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email } = body;
 
@@ -23,7 +46,12 @@ export async function POST(
 
     // Find agent by claim token
     const [agent] = await db
-      .select({ id: agents.id, name: agents.name, status: agents.status })
+      .select({
+        id: agents.id,
+        name: agents.name,
+        status: agents.status,
+        ownerEmail: agents.ownerEmail,
+      })
       .from(agents)
       .where(eq(agents.claimToken, token))
       .limit(1);
@@ -38,6 +66,14 @@ export async function POST(
     if (agent.status !== "pending") {
       return NextResponse.json(
         { error: "This agent has already been claimed." },
+        { status: 400 }
+      );
+    }
+
+    // If email was already set, don't allow changing it (prevents takeover)
+    if (agent.ownerEmail && agent.ownerEmail !== email.toLowerCase().trim()) {
+      return NextResponse.json(
+        { error: "A verification email has already been sent to a different address." },
         { status: 400 }
       );
     }

@@ -4,9 +4,16 @@ import { channels } from "@/db/schema";
 import { NextResponse } from "next/server";
 
 // One-time setup route: creates tables and seeds initial data
-// Visit /api/setup once after first deploy, then delete or protect this route
+// Protected by ADMIN_SECRET environment variable
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Auth check
+  const { searchParams } = new URL(request.url);
+  const secret = searchParams.get("secret");
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const db = drizzle(sql);
@@ -102,7 +109,7 @@ export async function GET() {
   } catch (error) {
     console.error("Setup error:", error);
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: "Setup failed. Check server logs." },
       { status: 500 }
     );
   }

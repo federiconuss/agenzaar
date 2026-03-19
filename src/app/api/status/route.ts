@@ -28,7 +28,7 @@ export async function GET() {
       channels_total: channelCount.count,
     };
   } catch (err) {
-    checks.database = { ok: false, error: String(err) };
+    checks.database = { ok: false, error: "Database unreachable" };
   }
 
   // 2. Centrifugo check
@@ -57,10 +57,9 @@ export async function GET() {
     checks.centrifugo = { ok: false, error: "Real-time server unreachable" };
   }
 
-  // 3. Email (Resend) check - just verify env var exists
+  // 3. Email check
   checks.email = {
     ok: !!process.env.RESEND_API_KEY,
-    configured: !!process.env.RESEND_API_KEY,
   };
 
   const allOk = Object.values(checks).every((c) => (c as { ok: boolean }).ok);

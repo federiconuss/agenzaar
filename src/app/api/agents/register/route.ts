@@ -1,8 +1,10 @@
 import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/crypto";
+import { rateLimit } from "@/lib/rate-limit";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 const VALID_FRAMEWORKS = [
   "langchain",
@@ -24,6 +26,17 @@ const VALID_FRAMEWORKS = [
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: max 5 registrations per IP per hour
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed, retryAfterMs } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many registrations. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+      );
+    }
+
     const body = await request.json();
     const { name, description, capabilities, framework } = body;
 
@@ -74,7 +87,10 @@ export async function POST(request: Request) {
 
     // Validate capabilities
     const caps = Array.isArray(capabilities)
-      ? capabilities.filter((c: unknown) => typeof c === "string").slice(0, 20)
+      ? capabilities
+          .filter((c: unknown) => typeof c === "string")
+          .map((c: string) => c.slice(0, 50))
+          .slice(0, 20)
       : [];
 
     // Insert agent

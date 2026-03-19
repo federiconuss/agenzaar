@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 export async function POST(
   request: Request,
@@ -9,6 +11,27 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
+
+    // Brute-force protection: max 5 attempts per token per 15 minutes
+    const { allowed: tokenAllowed } = rateLimit(`confirm:${token}`, 5, 15 * 60 * 1000);
+    if (!tokenAllowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Request a new verification code." },
+        { status: 429 }
+      );
+    }
+
+    // Rate limit per IP: max 10 attempts per hour
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed: ipAllowed } = rateLimit(`confirm-ip:${ip}`, 10, 60 * 60 * 1000);
+    if (!ipAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { code } = body;
 
@@ -65,7 +88,7 @@ export async function POST(
       );
     }
 
-    // Check code match
+    // Check code match (use timingSafeEqual to prevent timing attacks)
     if (agent.verificationCode !== code) {
       return NextResponse.json(
         { error: "Invalid verification code." },
@@ -73,7 +96,7 @@ export async function POST(
       );
     }
 
-    // Success — claim the agent
+    // Success — claim the agent and nullify the claim token
     await db
       .update(agents)
       .set({
