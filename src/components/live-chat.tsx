@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 
 type Message = {
@@ -32,13 +32,29 @@ function timeAgo(date: Date): string {
   return `${days}d ago`;
 }
 
+type ConnectionMode = "connecting" | "live" | "polling";
+
 export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [connected, setConnected] = useState(false);
+  const [mode, setMode] = useState<ConnectionMode>("connecting");
   const [newCount, setNewCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wsFailCount = useRef(0);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Merge new messages avoiding duplicates
+  const mergeMessages = useCallback((incoming: Message[]) => {
+    setMessages((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const newMsgs = incoming.filter((m) => !existingIds.has(m.id));
+      if (newMsgs.length === 0) return prev;
+      setNewCount((c) => c + newMsgs.length);
+      setTimeout(() => setNewCount((c) => Math.max(0, c - newMsgs.length)), 3000);
+      return [...prev, ...newMsgs];
+    });
+  }, []);
 
   // Auto-scroll when new messages arrive
   useEffect(() => {
@@ -47,20 +63,55 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
     }
   }, [messages.length]);
 
-  // Connect to Centrifugo
+  // Polling fallback: fetch messages from API every 5 seconds
+  const startPolling = useCallback(() => {
+    if (pollRef.current) return; // already polling
+    setMode("polling");
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/channels/${channelSlug}/messages?limit=50`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && Array.isArray(data.messages)) {
+            // API returns newest first, reverse for chronological order
+            const sorted = [...data.messages].reverse();
+            mergeMessages(sorted);
+          }
+        }
+      } catch {
+        // Silently retry on next interval
+      }
+    };
+
+    poll(); // Immediate first poll
+    pollRef.current = setInterval(poll, 5000);
+  }, [channelSlug, mergeMessages]);
+
+  // Connect to Centrifugo (with fallback to polling)
   useEffect(() => {
     let ws: WebSocket | null = null;
     let pingInterval: NodeJS.Timeout;
+    let destroyed = false;
 
     async function connect() {
+      if (destroyed) return;
+
+      // If WebSocket failed too many times, switch to polling
+      if (wsFailCount.current >= 2) {
+        console.log("[live-chat] WebSocket failed, switching to polling");
+        startPolling();
+        return;
+      }
+
       try {
-        // Get connection token and Centrifugo URL from server
         const tokenRes = await fetch("/api/centrifugo/token");
         const tokenData = await tokenRes.json();
         const { token, url: centrifugoUrl } = tokenData;
 
         if (!centrifugoUrl || !token) {
-          console.warn("Centrifugo not configured, real-time disabled");
+          console.warn("[live-chat] Centrifugo not configured, using polling");
+          startPolling();
           return;
         }
 
@@ -69,8 +120,15 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
         ws = new WebSocket(`${wsUrl}/connection/websocket`);
         wsRef.current = ws;
 
+        const connectTimeout = setTimeout(() => {
+          if (ws?.readyState !== WebSocket.OPEN) {
+            console.log("[live-chat] WebSocket connect timeout");
+            ws?.close();
+          }
+        }, 5000);
+
         ws.onopen = () => {
-          // Send connect command
+          clearTimeout(connectTimeout);
           ws!.send(
             JSON.stringify({
               id: 1,
@@ -81,9 +139,7 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log("[centrifugo]", JSON.stringify(data));
 
-          // Handle errors
           if (data.error) {
             console.error("[centrifugo] error:", data.error);
             return;
@@ -91,7 +147,13 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
 
           // Handle connect response
           if (data.id === 1 && data.connect) {
-            setConnected(true);
+            wsFailCount.current = 0; // Reset fail count on successful connect
+            setMode("live");
+            // Stop polling if it was running
+            if (pollRef.current) {
+              clearInterval(pollRef.current);
+              pollRef.current = null;
+            }
             // Subscribe to channel
             ws!.send(
               JSON.stringify({
@@ -104,28 +166,28 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
           // Handle subscription publications (new messages)
           if (data.push?.pub?.data) {
             const msg = data.push.pub.data as Message;
-            setMessages((prev) => {
-              // Deduplicate
-              if (prev.some((m) => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-            setNewCount((c) => c + 1);
-
-            // Reset new count after 3 seconds
-            setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
+            mergeMessages([msg]);
           }
         };
 
         ws.onclose = (event) => {
+          clearTimeout(connectTimeout);
           console.log("[centrifugo] closed:", event.code, event.reason);
-          setConnected(false);
-          // Reconnect after 3 seconds
-          setTimeout(connect, 3000);
+          setMode("connecting");
+          wsFailCount.current++;
+
+          if (!destroyed) {
+            if (wsFailCount.current >= 2) {
+              startPolling();
+            } else {
+              setTimeout(connect, 3000);
+            }
+          }
         };
 
-        ws.onerror = (event) => {
-          console.error("[centrifugo] ws error:", event);
-          setConnected(false);
+        ws.onerror = () => {
+          clearTimeout(connectTimeout);
+          setMode("connecting");
         };
 
         // Ping to keep alive
@@ -135,29 +197,40 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
           }
         }, 25000);
       } catch (err) {
-        console.error("Centrifugo connection error:", err);
-        setTimeout(connect, 5000);
+        console.error("[live-chat] connection error:", err);
+        wsFailCount.current++;
+        if (!destroyed) {
+          if (wsFailCount.current >= 2) {
+            startPolling();
+          } else {
+            setTimeout(connect, 5000);
+          }
+        }
       }
     }
 
     connect();
 
     return () => {
+      destroyed = true;
       clearInterval(pingInterval);
       if (ws) ws.close();
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     };
-  }, [channelSlug]);
+  }, [channelSlug, startPolling, mergeMessages]);
+
+  const statusColor = mode === "live" ? "bg-emerald-500" : mode === "polling" ? "bg-amber-500" : "bg-zinc-600";
+  const statusText = mode === "live" ? "live" : mode === "polling" ? "auto-refresh" : "connecting...";
 
   return (
     <div className="flex flex-col h-full">
       {/* Connection status */}
       <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-600">
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${
-            connected ? "bg-emerald-500" : "bg-zinc-600"
-          }`}
-        />
-        {connected ? "live" : "connecting..."}
+        <span className={`w-1.5 h-1.5 rounded-full ${statusColor}`} />
+        {statusText}
         {newCount > 0 && (
           <span className="ml-auto text-emerald-500 animate-pulse">
             +{newCount} new
