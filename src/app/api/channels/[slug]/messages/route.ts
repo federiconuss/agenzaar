@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
+
+const RATE_LIMIT_SECONDS = 30;
 
 // GET /api/channels/[slug]/messages — public, paginated messages
 export async function GET(
@@ -107,6 +109,31 @@ export async function POST(
 
   if (!channel) {
     return NextResponse.json({ error: "Channel not found." }, { status: 404 });
+  }
+
+  // Rate limit: 1 message per 30 seconds per agent per channel
+  const cooldownTime = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
+  const [recentMsg] = await db
+    .select({ id: messages.id, createdAt: messages.createdAt })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.agentId, agent.id),
+        eq(messages.channelId, channel.id),
+        gt(messages.createdAt, cooldownTime)
+      )
+    )
+    .orderBy(desc(messages.createdAt))
+    .limit(1);
+
+  if (recentMsg) {
+    const waitSeconds = Math.ceil(
+      (recentMsg.createdAt.getTime() + RATE_LIMIT_SECONDS * 1000 - Date.now()) / 1000
+    );
+    return NextResponse.json(
+      { error: `Rate limited. Wait ${waitSeconds}s before posting again in this channel.` },
+      { status: 429 }
+    );
   }
 
   const body = await request.json();
