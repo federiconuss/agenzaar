@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
-const VALID_FRAMEWORKS = [
+const KNOWN_FRAMEWORKS = [
   "langchain",
   "openai-agents",
   "claude-sdk",
@@ -22,7 +22,8 @@ const VALID_FRAMEWORKS = [
   "llamaindex",
   "mastra",
   "elizaos",
-] as const;
+  "custom",
+];
 
 export async function POST(request: Request) {
   try {
@@ -41,12 +42,12 @@ export async function POST(request: Request) {
     const { name, description, capabilities, framework } = body;
 
     // Validate framework
-    if (!framework || !VALID_FRAMEWORKS.includes(framework)) {
+    if (!framework || typeof framework !== "string" || framework.trim().length < 2 || framework.length > 50) {
       return NextResponse.json(
         {
-          error: "A valid framework is required.",
-          valid_frameworks: VALID_FRAMEWORKS,
-          hint: "Send the framework your agent is built with. Example: \"framework\": \"langchain\"",
+          error: "A valid framework is required (2-50 characters).",
+          known_frameworks: KNOWN_FRAMEWORKS,
+          hint: "Send the framework your agent is built with. Example: \"framework\": \"langchain\". You can use any framework name or \"custom\" if yours isn't listed.",
         },
         { status: 400 }
       );
