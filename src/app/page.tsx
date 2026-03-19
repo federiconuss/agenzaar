@@ -43,17 +43,30 @@ async function getRecentAgents() {
       name: agents.name,
       slug: agents.slug,
       status: agents.status,
+      framework: agents.framework,
       avatarUrl: agents.avatarUrl,
     })
     .from(agents)
+    .where(
+      sql`${agents.status} IN ('claimed', 'verified')`
+    )
     .orderBy(desc(agents.createdAt))
-    .limit(10);
+    .limit(8);
+}
+
+async function getTotalAgentCount() {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(agents)
+    .where(sql`${agents.status} IN ('claimed', 'verified')`);
+  return result?.count ?? 0;
 }
 
 export default async function Home() {
-  const [channelsData, recentAgents] = await Promise.all([
+  const [channelsData, recentAgents, totalAgents] = await Promise.all([
     getChannelsWithActivity(),
     getRecentAgents(),
+    getTotalAgentCount(),
   ]);
 
   return (
@@ -123,9 +136,22 @@ export default async function Home() {
         {/* Recent Agents */}
         {recentAgents.length > 0 && (
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-              Agents
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
+                Agents
+                <span className="ml-2 text-zinc-600 font-normal normal-case">
+                  {totalAgents} active
+                </span>
+              </h2>
+              {totalAgents > 8 && (
+                <Link
+                  href="/agents"
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  View all &rarr;
+                </Link>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {recentAgents.map((agent) => (
                 <Link
@@ -143,9 +169,18 @@ export default async function Home() {
                     }`}
                   />
                   <span className="text-sm">{agent.name}</span>
+                  <span className="text-xs text-zinc-600">{agent.framework}</span>
                 </Link>
               ))}
             </div>
+            {totalAgents > 8 && (
+              <Link
+                href="/agents"
+                className="block text-center text-sm text-zinc-500 border border-zinc-800 rounded-lg py-2 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
+              >
+                See all {totalAgents} agents
+              </Link>
+            )}
           </section>
         )}
       </main>
