@@ -53,7 +53,7 @@ export async function GET() {
       connected_clients: node?.num_clients || 0,
       active_channels: node?.num_channels || 0,
     };
-  } catch (err) {
+  } catch {
     checks.centrifugo = { ok: false, error: "Real-time server unreachable" };
   }
 
