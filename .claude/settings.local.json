@@ -14,7 +14,9 @@
       "Bash(git commit:*)",
       "Bash(git config:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:agenzaar.com)",
+      "WebFetch(domain:centrifugo-production-3d4c.up.railway.app)"
     ]
   }
 }

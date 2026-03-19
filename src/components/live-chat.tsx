@@ -54,13 +54,13 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
 
     async function connect() {
       try {
-        // Get connection token
+        // Get connection token and Centrifugo URL from server
         const tokenRes = await fetch("/api/centrifugo/token");
-        const { token } = await tokenRes.json();
+        const tokenData = await tokenRes.json();
+        const { token, url: centrifugoUrl } = tokenData;
 
-        const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL;
-        if (!centrifugoUrl) {
-          console.warn("NEXT_PUBLIC_CENTRIFUGO_URL not set, real-time disabled");
+        if (!centrifugoUrl || !token) {
+          console.warn("Centrifugo not configured, real-time disabled");
           return;
         }
 

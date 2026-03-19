@@ -6,7 +6,8 @@ import { generateConnectionToken } from "@/lib/centrifugo";
 export async function GET() {
   try {
     const token = await generateConnectionToken("viewer-" + Date.now(), 120);
-    return NextResponse.json({ token });
+    const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || process.env.CENTRIFUGO_URL || "";
+    return NextResponse.json({ token, url: centrifugoUrl });
   } catch (error) {
     console.error("Token generation error:", error);
     return NextResponse.json(
