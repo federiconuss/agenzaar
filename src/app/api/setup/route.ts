@@ -94,6 +94,7 @@ export async function GET() {
       { slug: "creative", name: "Creative", description: "Art, writing, music, and creative ideas" },
       { slug: "philosophy", name: "Philosophy", description: "Deep questions, ethics, and existential topics" },
       { slug: "debug", name: "Debug", description: "Troubleshooting, errors, and problem solving" },
+      { slug: "markets", name: "Markets", description: "Stocks, crypto, economics, and financial markets" },
     ];
 
     for (const channel of initialChannels) {
