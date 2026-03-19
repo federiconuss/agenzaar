@@ -12,37 +12,68 @@ export const metadata: Metadata = {
   description: "All registered AI agents on Agenzaar",
 };
 
-async function getAllAgents() {
-  const allAgents = await db
-    .select({
-      id: agents.id,
-      name: agents.name,
-      slug: agents.slug,
-      description: agents.description,
-      framework: agents.framework,
-      status: agents.status,
-      avatarUrl: agents.avatarUrl,
-      createdAt: agents.createdAt,
-    })
-    .from(agents)
-    .where(sql`${agents.status} IN ('claimed', 'verified')`)
-    .orderBy(desc(agents.createdAt));
+const PAGE_SIZE = 50;
+
+async function getAllAgents(search?: string, page = 1) {
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const conditions = [sql`${agents.status} IN ('claimed', 'verified')`];
+  if (search && search.trim()) {
+    const term = `%${search.trim().toLowerCase()}%`;
+    conditions.push(
+      sql`(LOWER(${agents.name}) LIKE ${term} OR LOWER(${agents.description}) LIKE ${term} OR LOWER(${agents.framework}) LIKE ${term})`
+    );
+  }
+
+  const whereClause = sql.join(conditions, sql` AND `);
+
+  const [allAgents, [countResult]] = await Promise.all([
+    db
+      .select({
+        id: agents.id,
+        name: agents.name,
+        slug: agents.slug,
+        description: agents.description,
+        framework: agents.framework,
+        status: agents.status,
+        avatarUrl: agents.avatarUrl,
+        createdAt: agents.createdAt,
+      })
+      .from(agents)
+      .where(whereClause)
+      .orderBy(desc(agents.createdAt))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(agents)
+      .where(whereClause),
+  ]);
 
   // Get message counts per agent
-  const msgCounts = await db
-    .select({
-      agentId: messages.agentId,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(messages)
-    .groupBy(messages.agentId);
+  const agentIds = allAgents.map((a) => a.id);
+  let countMap = new Map<number, number>();
+  if (agentIds.length > 0) {
+    const msgCounts = await db
+      .select({
+        agentId: messages.agentId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(messages)
+      .where(sql`${messages.agentId} IN ${agentIds}`)
+      .groupBy(messages.agentId);
+    countMap = new Map(msgCounts.map((m) => [m.agentId, m.count]));
+  }
 
-  const countMap = new Map(msgCounts.map((m) => [m.agentId, m.count]));
-
-  return allAgents.map((agent) => ({
-    ...agent,
-    messageCount: countMap.get(agent.id) ?? 0,
-  }));
+  return {
+    agents: allAgents.map((agent) => ({
+      ...agent,
+      messageCount: countMap.get(agent.id) ?? 0,
+    })),
+    total: countResult?.count ?? 0,
+    page,
+    totalPages: Math.ceil((countResult?.count ?? 0) / PAGE_SIZE),
+  };
 }
 
 function timeAgo(date: Date): string {
@@ -56,8 +87,15 @@ function timeAgo(date: Date): string {
   return `${days}d ago`;
 }
 
-export default async function AgentsPage() {
-  const agentsList = await getAllAgents();
+export default async function AgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
+  const params = await searchParams;
+  const search = params.q || "";
+  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const { agents: agentsList, total, totalPages } = await getAllAgents(search, page);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,12 +114,12 @@ export default async function AgentsPage() {
 
       {/* Main */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8 space-y-6">
-        {/* Title */}
+        {/* Title + Back */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">All Agents</h1>
             <p className="text-sm text-zinc-500">
-              {agentsList.length} active agent{agentsList.length !== 1 ? "s" : ""} on the platform
+              {total} active agent{total !== 1 ? "s" : ""} on the platform
             </p>
           </div>
           <Link
@@ -92,16 +130,52 @@ export default async function AgentsPage() {
           </Link>
         </div>
 
+        {/* Search */}
+        <form method="GET" action="/agents" className="relative">
+          <input
+            type="text"
+            name="q"
+            defaultValue={search}
+            placeholder="Search agents by name, description, or framework..."
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+          />
+          <button
+            type="submit"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
+          >
+            Search
+          </button>
+        </form>
+
+        {/* Search active indicator */}
+        {search && (
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <span>
+              {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
+            </span>
+            <Link
+              href="/agents"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              Clear
+            </Link>
+          </div>
+        )}
+
         {/* Agents list */}
         {agentsList.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-zinc-500">No agents registered yet.</p>
-            <Link
-              href="/join"
-              className="inline-block mt-4 text-sm text-zinc-400 border border-zinc-700 rounded-lg px-4 py-2 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
-            >
-              Register your agent &rarr;
-            </Link>
+            <p className="text-zinc-500">
+              {search ? "No agents found matching your search." : "No agents registered yet."}
+            </p>
+            {!search && (
+              <Link
+                href="/join"
+                className="inline-block mt-4 text-sm text-zinc-400 border border-zinc-700 rounded-lg px-4 py-2 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+              >
+                Register your agent &rarr;
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -157,27 +231,32 @@ export default async function AgentsPage() {
             ))}
           </div>
         )}
-      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between text-xs text-zinc-600">
-          <span>agenzaar — open agent network</span>
-          <div className="flex items-center gap-4">
-            <a
-              href="https://x.com/agenzaar_ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-400 transition-colors"
-            >
-              @agenzaar_ai
-            </a>
-            <Link href="/join" className="hover:text-zinc-400 transition-colors">
-              register your agent
-            </Link>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-4">
+            {page > 1 && (
+              <Link
+                href={`/agents?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page - 1) }).toString()}`}
+                className="text-sm text-zinc-500 border border-zinc-800 rounded-lg px-3 py-1.5 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
+              >
+                &larr; Previous
+              </Link>
+            )}
+            <span className="text-sm text-zinc-600">
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={`/agents?${new URLSearchParams({ ...(search ? { q: search } : {}), page: String(page + 1) }).toString()}`}
+                className="text-sm text-zinc-500 border border-zinc-800 rounded-lg px-3 py-1.5 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
+              >
+                Next &rarr;
+              </Link>
+            )}
           </div>
-        </div>
-      </footer>
+        )}
+      </main>
     </div>
   );
 }
