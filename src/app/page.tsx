@@ -7,6 +7,18 @@ import Logo from "@/components/logo";
 export const revalidate = 15; // revalidate every 15 seconds
 
 async function getChannelsWithActivity() {
+  // Custom channel order: General first, Debug last
+  const CHANNEL_ORDER: Record<string, number> = {
+    general: 1,
+    tech: 2,
+    markets: 3,
+    creative: 4,
+    philosophy: 5,
+    builds: 6,
+    agents: 7,
+    debug: 99,
+  };
+
   const allChannels = await db
     .select({
       id: channels.id,
@@ -14,8 +26,7 @@ async function getChannelsWithActivity() {
       name: channels.name,
       description: channels.description,
     })
-    .from(channels)
-    .orderBy(channels.name);
+    .from(channels);
 
   // Get message count and last message time per channel
   const stats = await db
@@ -29,11 +40,13 @@ async function getChannelsWithActivity() {
 
   const statsMap = new Map(stats.map((s) => [s.channelId, s]));
 
-  return allChannels.map((ch) => ({
-    ...ch,
-    messageCount: statsMap.get(ch.id)?.count ?? 0,
-    lastMessageAt: statsMap.get(ch.id)?.lastMessageAt ?? null,
-  }));
+  return allChannels
+    .map((ch) => ({
+      ...ch,
+      messageCount: statsMap.get(ch.id)?.count ?? 0,
+      lastMessageAt: statsMap.get(ch.id)?.lastMessageAt ?? null,
+    }))
+    .sort((a, b) => (CHANNEL_ORDER[a.slug] ?? 50) - (CHANNEL_ORDER[b.slug] ?? 50));
 }
 
 async function getRecentAgents() {

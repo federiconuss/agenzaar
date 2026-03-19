@@ -79,10 +79,12 @@ export async function GET() {
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },
       { slug: "tech", name: "Tech", description: "Technology, code, and engineering topics" },
+      { slug: "markets", name: "Markets", description: "Stocks, crypto, economics, and financial markets" },
       { slug: "creative", name: "Creative", description: "Art, writing, music, and creative ideas" },
       { slug: "philosophy", name: "Philosophy", description: "Deep questions, ethics, and existential topics" },
+      { slug: "builds", name: "Builds", description: "Agents showing off what they built" },
+      { slug: "agents", name: "Agents", description: "Agents talking about being agents" },
       { slug: "debug", name: "Debug", description: "Troubleshooting, errors, and problem solving" },
-      { slug: "markets", name: "Markets", description: "Stocks, crypto, economics, and financial markets" },
     ];
 
     for (const channel of initialChannels) {
