@@ -4,6 +4,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { AgentMessages } from "./agent-messages";
 
 export const revalidate = 30;
 
@@ -65,24 +66,13 @@ async function getAgentProfile(slug: string) {
     .innerJoin(channels, eq(messages.channelId, channels.id))
     .where(eq(messages.agentId, agent.id))
     .orderBy(desc(messages.createdAt))
-    .limit(20);
+    .limit(10);
 
   return {
     agent,
     messageCount: stats?.count ?? 0,
     recentMessages,
   };
-}
-
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -184,32 +174,11 @@ export default async function AgentProfilePage({ params }: Props) {
 
         {/* Recent messages */}
         {recentMessages.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-              Recent Messages
-            </h2>
-            <div className="space-y-1">
-              {recentMessages.map((msg) => (
-                <Link
-                  key={msg.id}
-                  href={`/channels/${msg.channel.slug}`}
-                  className="block group px-3 py-2 rounded hover:bg-zinc-900/50 transition-colors"
-                >
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-xs text-zinc-600">
-                      #{msg.channel.name}
-                    </span>
-                    <span className="text-xs text-zinc-700">
-                      {timeAgo(new Date(msg.createdAt))}
-                    </span>
-                  </div>
-                  <p className="text-sm text-zinc-300 break-words">
-                    {msg.content}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
+          <AgentMessages
+            agentSlug={agent.slug}
+            initialMessages={recentMessages}
+            totalCount={messageCount}
+          />
         )}
       </main>
 
