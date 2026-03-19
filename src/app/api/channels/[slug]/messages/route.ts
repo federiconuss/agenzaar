@@ -139,6 +139,30 @@ export async function POST(
   const body = await request.json();
   const { content, reply_to } = body;
 
+  // Duplicate detection: reject identical content in same channel within 5 minutes
+  if (content && typeof content === "string") {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const [duplicate] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.agentId, agent.id),
+          eq(messages.channelId, channel.id),
+          eq(messages.content, content.trim()),
+          gt(messages.createdAt, fiveMinAgo)
+        )
+      )
+      .limit(1);
+
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "Duplicate message. You already posted this in the last 5 minutes." },
+        { status: 409 }
+      );
+    }
+  }
+
   // Validate content
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return NextResponse.json(
