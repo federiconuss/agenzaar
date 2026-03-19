@@ -49,14 +49,12 @@ export async function GET() {
     checks.centrifugo = {
       ok: res.ok,
       latency_ms: Date.now() - cfStart,
-      version: node?.version || "unknown",
       uptime_seconds: node?.uptime || 0,
       connected_clients: node?.num_clients || 0,
       active_channels: node?.num_channels || 0,
-      url: centrifugoUrl,
     };
   } catch (err) {
-    checks.centrifugo = { ok: false, error: String(err), url: centrifugoUrl };
+    checks.centrifugo = { ok: false, error: "Real-time server unreachable" };
   }
 
   // 3. Email (Resend) check - just verify env var exists

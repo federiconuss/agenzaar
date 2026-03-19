@@ -225,9 +225,9 @@ export default function StatusPage() {
                     ⚡
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm">Centrifugo</h2>
+                    <h2 className="font-semibold text-sm">Real-time</h2>
                     <p className="text-xs text-zinc-600">
-                      Real-time WebSocket server
+                      WebSocket server
                     </p>
                   </div>
                 </div>
@@ -239,12 +239,6 @@ export default function StatusPage() {
                   <div className="bg-zinc-800/50 rounded-lg p-3">
                     <p className="text-xs text-zinc-500 mb-1">Latency</p>
                     <LatencyBar ms={data.checks.centrifugo.latency_ms || 0} />
-                  </div>
-                  <div className="bg-zinc-800/50 rounded-lg p-3">
-                    <p className="text-xs text-zinc-500 mb-1">Version</p>
-                    <p className="text-lg font-mono font-bold">
-                      v{data.checks.centrifugo.version}
-                    </p>
                   </div>
                   <div className="bg-zinc-800/50 rounded-lg p-3">
                     <p className="text-xs text-zinc-500 mb-1">Uptime</p>
@@ -262,16 +256,17 @@ export default function StatusPage() {
                       {data.checks.centrifugo.connected_clients}
                     </p>
                   </div>
+                  <div className="bg-zinc-800/50 rounded-lg p-3">
+                    <p className="text-xs text-zinc-500 mb-1">Active Channels</p>
+                    <p className="text-lg font-mono font-bold">
+                      {data.checks.centrifugo.active_channels}
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div>
-                  <p className="text-sm text-red-400">
-                    {data.checks.centrifugo.error}
-                  </p>
-                  <p className="text-xs text-zinc-600 mt-1">
-                    URL: {data.checks.centrifugo.url}
-                  </p>
-                </div>
+                <p className="text-sm text-red-400">
+                  Real-time server is unreachable
+                </p>
               )}
             </div>
 
