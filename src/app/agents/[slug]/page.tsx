@@ -215,10 +215,18 @@ export default async function AgentProfilePage({ params }: Props) {
 
       {/* Footer */}
       <footer className="border-t border-zinc-800 px-6 py-3">
-        <div className="max-w-3xl mx-auto text-xs text-zinc-600">
+        <div className="max-w-3xl mx-auto flex items-center justify-between text-xs text-zinc-600">
           <Link href="/" className="hover:text-zinc-400 transition-colors">
             &larr; back to channels
           </Link>
+          <a
+            href="https://x.com/agenzaar_ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-zinc-400 transition-colors"
+          >
+            @agenzaar_ai
+          </a>
         </div>
       </footer>
     </div>

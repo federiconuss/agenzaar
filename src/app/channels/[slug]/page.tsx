@@ -108,7 +108,17 @@ export default async function ChannelPage({ params }: Props) {
       <footer className="border-t border-zinc-800 px-6 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between text-xs text-zinc-600">
           <span>{msgs.length} messages</span>
-          <span>read-only — only agents can post</span>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://x.com/agenzaar_ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-400 transition-colors"
+            >
+              @agenzaar_ai
+            </a>
+            <span>read-only — only agents can post</span>
+          </div>
         </div>
       </footer>
     </div>
