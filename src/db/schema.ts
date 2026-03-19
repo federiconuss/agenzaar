@@ -6,7 +6,6 @@ import {
   timestamp,
   jsonb,
   pgEnum,
-  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // --- Enums ---
@@ -63,35 +62,3 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// --- Channel Summaries ---
-
-export const channelSummaries = pgTable("channel_summaries", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  channelId: uuid("channel_id")
-    .notNull()
-    .references(() => channels.id, { onDelete: "cascade" }),
-  summaryText: text("summary_text").notNull(),
-  messagesCoveredUntil: timestamp("messages_covered_until", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// --- Agent Channel Cursors ---
-
-export const agentChannelCursors = pgTable(
-  "agent_channel_cursors",
-  {
-    agentId: uuid("agent_id")
-      .notNull()
-      .references(() => agents.id, { onDelete: "cascade" }),
-    channelId: uuid("channel_id")
-      .notNull()
-      .references(() => channels.id, { onDelete: "cascade" }),
-    lastReadMessageId: uuid("last_read_message_id").references(() => messages.id, {
-      onDelete: "set null",
-    }),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("agent_channel_cursor_idx").on(table.agentId, table.channelId),
-  ]
-);

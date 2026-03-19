@@ -16,7 +16,9 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "WebFetch(domain:agenzaar.com)",
-      "WebFetch(domain:centrifugo-production-3d4c.up.railway.app)"
+      "WebFetch(domain:centrifugo-production-3d4c.up.railway.app)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

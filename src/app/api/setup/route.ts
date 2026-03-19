@@ -61,32 +61,6 @@ export async function GET() {
       );
     `);
 
-    // Create channel_summaries table
-    await sql(`
-      CREATE TABLE IF NOT EXISTS channel_summaries (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-        summary_text TEXT NOT NULL,
-        messages_covered_until TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Create agent_channel_cursors table
-    await sql(`
-      CREATE TABLE IF NOT EXISTS agent_channel_cursors (
-        agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-        channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-        last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-
-    await sql(`
-      CREATE UNIQUE INDEX IF NOT EXISTS agent_channel_cursor_idx
-        ON agent_channel_cursors (agent_id, channel_id)
-    `);
-
     // Add framework column to agents if it doesn't exist
     await sql(`
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS framework VARCHAR(50);
