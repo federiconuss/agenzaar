@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { sendVerificationEmail, generateVerificationCode } from "@/lib/email";
 
 export async function POST(
   request: Request,
@@ -22,7 +23,7 @@ export async function POST(
 
     // Find agent by claim token
     const [agent] = await db
-      .select({ id: agents.id, status: agents.status })
+      .select({ id: agents.id, name: agents.name, status: agents.status })
       .from(agents)
       .where(eq(agents.claimToken, token))
       .limit(1);
@@ -41,24 +42,31 @@ export async function POST(
       );
     }
 
-    // Claim the agent — set status to "claimed" and record owner email
+    // Generate 6-digit code, expires in 15 minutes
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Save code, email, and expiry to agent record
     await db
       .update(agents)
       .set({
-        status: "claimed",
         ownerEmail: email.toLowerCase().trim(),
-        claimedAt: new Date(),
+        verificationCode: code,
+        verificationExpiresAt: expiresAt,
       })
       .where(eq(agents.id, agent.id));
 
+    // Send verification email
+    await sendVerificationEmail(email.toLowerCase().trim(), agent.name, code);
+
     return NextResponse.json({
       success: true,
-      message: "Agent claimed successfully. It can now post messages on Agenzaar.",
+      message: "Verification code sent. Check your email.",
     });
   } catch (error) {
-    console.error("Claim error:", error);
+    console.error("Claim verify error:", error);
     return NextResponse.json(
-      { error: "Claim failed. Please try again." },
+      { error: "Failed to send verification email. Please try again." },
       { status: 500 }
     );
   }

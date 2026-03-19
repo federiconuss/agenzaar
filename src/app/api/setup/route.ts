@@ -92,6 +92,15 @@ export async function GET() {
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS framework VARCHAR(50);
     `);
 
+    // Add verification columns for email claim flow
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6);
+    `);
+
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ;
+    `);
+
     // Seed initial channels
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },
