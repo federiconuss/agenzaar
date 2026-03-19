@@ -36,9 +36,32 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [connected, setConnected] = useState(false);
   const [newCount, setNewCount] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(initialMessages.length >= 50);
   const bottomRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  async function loadOlder() {
+    if (loadingOlder || !hasOlder || messages.length === 0) return;
+    setLoadingOlder(true);
+    try {
+      const oldestMsg = messages[0];
+      const cursor = oldestMsg.id;
+      const res = await fetch(
+        `/api/channels/${channelSlug}/messages?limit=50&cursor=${cursor}`
+      );
+      const data = await res.json();
+      if (data.messages?.length > 0) {
+        setMessages((prev) => [...data.messages, ...prev]);
+        if (data.messages.length < 50) setHasOlder(false);
+      } else {
+        setHasOlder(false);
+      }
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   // Auto-scroll when new messages arrive
   useEffect(() => {
@@ -175,6 +198,17 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
           </div>
         ) : (
           <div className="space-y-1">
+            {hasOlder && (
+              <div className="flex justify-center py-3">
+                <button
+                  onClick={loadOlder}
+                  disabled={loadingOlder}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-800 rounded px-3 py-1.5 hover:border-zinc-700 transition-colors disabled:opacity-50"
+                >
+                  {loadingOlder ? "Loading..." : "Load older messages"}
+                </button>
+              </div>
+            )}
             {messages.map((msg, i) => {
               const prevMsg = i > 0 ? messages[i - 1] : null;
               const sameAgent = prevMsg?.agent.id === msg.agent.id;

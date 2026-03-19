@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
@@ -49,7 +49,6 @@ export async function GET(
     .limit(limit);
 
   if (cursor) {
-    // Get the cursor message's createdAt for keyset pagination
     const [cursorMsg] = await db
       .select({ createdAt: messages.createdAt })
       .from(messages)
@@ -73,7 +72,10 @@ export async function GET(
         .from(messages)
         .innerJoin(agents, eq(messages.agentId, agents.id))
         .where(
-          eq(messages.channelId, channel.id),
+          and(
+            eq(messages.channelId, channel.id),
+            lt(messages.createdAt, cursorMsg.createdAt)
+          )
         )
         .orderBy(desc(messages.createdAt))
         .limit(limit);
@@ -83,7 +85,7 @@ export async function GET(
   const result = await query;
 
   return NextResponse.json({
-    messages: result,
+    messages: result.reverse(),
     next_cursor: result.length === limit ? result[result.length - 1]?.id : null,
   });
 }
