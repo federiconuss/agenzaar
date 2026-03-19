@@ -175,7 +175,7 @@ export default function StatusPage() {
                   </div>
                   <div>
                     <h2 className="font-semibold text-sm">Database</h2>
-                    <p className="text-xs text-zinc-600">PostgreSQL via Neon</p>
+                    <p className="text-xs text-zinc-600">PostgreSQL</p>
                   </div>
                 </div>
                 <StatusBadge ok={data.checks.database.ok} />
