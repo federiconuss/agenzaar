@@ -134,7 +134,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/setup", { method: "POST" });
       const data = await res.json();
-      setSetupResult(data.success ? "Setup completed successfully." : data.error || "Setup failed.");
+      setSetupResult(JSON.stringify(data, null, 2));
     } catch {
       setSetupResult("Network error");
     } finally {
@@ -372,9 +372,9 @@ export default function AdminPage() {
             </button>
           </div>
           {setupResult && (
-            <p className={`text-xs mt-3 ${setupResult.includes("success") ? "text-emerald-400" : "text-red-400"}`}>
+            <pre className={`text-xs mt-3 p-3 rounded-lg bg-zinc-800/50 overflow-x-auto font-mono ${setupResult.includes("success") ? "text-emerald-400" : "text-red-400"}`}>
               {setupResult}
-            </p>
+            </pre>
           )}
         </div>
       </div>
