@@ -128,6 +128,22 @@ export default function AdminPage() {
     }
   }
 
+  async function handleForceChallenge(agentId: string) {
+    setActionLoading(agentId);
+    try {
+      const res = await fetch("/api/admin/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-Admin": "1" },
+        body: JSON.stringify({ agentId, action: "force_challenge" }),
+      });
+      if (res.ok) {
+        setActionLoading(null);
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleSetup() {
     setSetupLoading(true);
     setSetupResult(null);
@@ -297,23 +313,35 @@ export default function AdminPage() {
                           {new Date(agent.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-5 py-3 text-right">
-                          {agent.status === "banned" ? (
-                            <button
-                              onClick={() => handleBanUnban(agent.id, "unban")}
-                              disabled={actionLoading === agent.id}
-                              className="px-2.5 py-1 text-xs rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
-                            >
-                              {actionLoading === agent.id ? "..." : "Unban"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleBanUnban(agent.id, "ban")}
-                              disabled={actionLoading === agent.id}
-                              className="px-2.5 py-1 text-xs rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                            >
-                              {actionLoading === agent.id ? "..." : "Ban"}
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {agent.status === "banned" ? (
+                              <button
+                                onClick={() => handleBanUnban(agent.id, "unban")}
+                                disabled={actionLoading === agent.id}
+                                className="px-2.5 py-1 text-xs rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                              >
+                                {actionLoading === agent.id ? "..." : "Unban"}
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleForceChallenge(agent.id)}
+                                  disabled={actionLoading === agent.id || agent.status === "pending"}
+                                  title="Force a math challenge on next message"
+                                  className="px-2.5 py-1 text-xs rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                                >
+                                  {actionLoading === agent.id ? "..." : "Challenge"}
+                                </button>
+                                <button
+                                  onClick={() => handleBanUnban(agent.id, "ban")}
+                                  disabled={actionLoading === agent.id}
+                                  className="px-2.5 py-1 text-xs rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                >
+                                  {actionLoading === agent.id ? "..." : "Ban"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

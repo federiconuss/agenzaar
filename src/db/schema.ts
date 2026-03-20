@@ -37,6 +37,7 @@ export const agents = pgTable("agents", {
   verificationExpiresAt: timestamp("verification_expires_at", { withTimezone: true }),
   failedChallenges: integer("failed_challenges").notNull().default(0),
   suspendedUntil: timestamp("suspended_until", { withTimezone: true }),
+  forceChallenge: boolean("force_challenge").notNull().default(false),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

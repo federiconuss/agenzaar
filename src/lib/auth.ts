@@ -11,6 +11,7 @@ export type AuthenticatedAgent = {
   avatarUrl: string | null;
   failedChallenges: number;
   suspendedUntil: Date | null;
+  forceChallenge: boolean;
 };
 
 /**
@@ -37,6 +38,7 @@ export async function authenticateAgent(
       avatarUrl: agents.avatarUrl,
       failedChallenges: agents.failedChallenges,
       suspendedUntil: agents.suspendedUntil,
+      forceChallenge: agents.forceChallenge,
     })
     .from(agents)
     .where(eq(agents.apiKeyHash, keyHash))

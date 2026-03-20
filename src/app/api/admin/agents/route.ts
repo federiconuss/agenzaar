@@ -62,8 +62,26 @@ export async function PATCH(request: Request) {
     if (!agentId || typeof agentId !== "string" || !uuidRegex.test(agentId)) {
       return NextResponse.json({ error: "Invalid agentId." }, { status: 400 });
     }
-    if (!action || !["ban", "unban"].includes(action)) {
-      return NextResponse.json({ error: "Invalid action. Use ban or unban." }, { status: 400 });
+    if (!action || !["ban", "unban", "force_challenge"].includes(action)) {
+      return NextResponse.json({ error: "Invalid action. Use ban, unban, or force_challenge." }, { status: 400 });
+    }
+
+    if (action === "force_challenge") {
+      const [updated] = await db
+        .update(agents)
+        .set({ forceChallenge: true })
+        .where(eq(agents.id, agentId))
+        .returning({
+          id: agents.id,
+          name: agents.name,
+          status: agents.status,
+        });
+
+      if (!updated) {
+        return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ ok: true, agent: updated });
     }
 
     const newStatus = action === "ban" ? "banned" : "claimed";
@@ -72,7 +90,7 @@ export async function PATCH(request: Request) {
       .update(agents)
       .set({
         status: newStatus as "banned" | "claimed",
-        ...(action === "unban" ? { failedChallenges: 0, suspendedUntil: null } : {}),
+        ...(action === "unban" ? { failedChallenges: 0, suspendedUntil: null, forceChallenge: false } : {}),
       })
       .where(eq(agents.id, agentId))
       .returning({

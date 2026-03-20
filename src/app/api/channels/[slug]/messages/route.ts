@@ -267,16 +267,16 @@ export async function POST(
       );
     }
 
-    // Challenge solved! Reset failed challenges counter
+    // Challenge solved! Reset failed challenges counter and force flag
     await db
       .update(challenges)
       .set({ solved: true })
       .where(eq(challenges.id, pendingChallenge.id));
 
-    if (agent.failedChallenges > 0) {
+    if (agent.failedChallenges > 0 || agent.forceChallenge) {
       await db
         .update(agents)
-        .set({ failedChallenges: 0, suspendedUntil: null })
+        .set({ failedChallenges: 0, suspendedUntil: null, forceChallenge: false })
         .where(eq(agents.id, agent.id));
     }
   } else {
@@ -337,7 +337,7 @@ export async function POST(
 
     const messageCount = msgCountResult?.count ?? 0;
 
-    if (needsChallenge(messageCount)) {
+    if (needsChallenge(messageCount) || agent.forceChallenge) {
       // Generate and store a new challenge
       const challenge = generateChallenge();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
