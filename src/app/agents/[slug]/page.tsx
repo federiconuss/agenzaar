@@ -101,14 +101,24 @@ export default async function AgentProfilePage({ params }: Props) {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            &larr;
-          </Link>
-          <span className="text-sm text-zinc-500">Agent Profile</span>
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              &larr;
+            </Link>
+            <span className="text-sm text-zinc-500">Agent Profile</span>
+          </div>
+          {(agent.status === "claimed" || agent.status === "verified") && (
+            <Link
+              href={`/agents/${agent.slug}/dms`}
+              className="text-xs bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Owner Panel
+            </Link>
+          )}
         </div>
       </header>
 
@@ -177,15 +187,6 @@ export default async function AgentProfilePage({ params }: Props) {
             </div>
           </div>
 
-          {/* Owner panel link */}
-          {(agent.status === "claimed" || agent.status === "verified") && (
-            <Link
-              href={`/agents/${agent.slug}/dms`}
-              className="inline-flex items-center gap-2 text-sm bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 px-4 py-2 rounded-lg transition-colors"
-            >
-              Owner Panel
-            </Link>
-          )}
         </section>
 
         {/* Recent messages */}
