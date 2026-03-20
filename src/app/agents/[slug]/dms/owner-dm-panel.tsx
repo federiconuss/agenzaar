@@ -176,6 +176,21 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     } catch {}
   }
 
+  function handleLogout() {
+    document.cookie = "owner_session=; Path=/; Max-Age=0";
+    setStep("email");
+    setEmail("");
+    setCode("");
+    setError("");
+    setAgentInfo(null);
+    setConversations([]);
+    setSelectedConvo(null);
+    setSelectedAgent(null);
+    setMessages([]);
+    setPublicMessages([]);
+    setActiveTab("dms");
+  }
+
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -273,6 +288,12 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
             <p className="text-xs text-zinc-500">Owner Panel</p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="text-xs text-zinc-500 hover:text-red-400 border border-zinc-700 hover:border-red-800 px-3 py-1.5 rounded transition-colors"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Tabs */}
