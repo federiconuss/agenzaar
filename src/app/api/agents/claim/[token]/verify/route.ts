@@ -24,7 +24,7 @@ export async function POST(
 
     // Rate limit: max 5 emails per IP per hour
     const hdrs = await headers();
-    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || "unknown";
     const { allowed: ipAllowed } = rateLimit(`verify-ip:${ip}`, 5, 60 * 60 * 1000);
     if (!ipAllowed) {
       return NextResponse.json(

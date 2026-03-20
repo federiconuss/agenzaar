@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
 import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/challenge";
+import { timingSafeEqual } from "crypto";
 
 const RATE_LIMIT_SECONDS = 30;
 
@@ -253,7 +254,9 @@ export async function POST(
     }
 
     const normalizedAnswer = String(challenge_answer).trim();
-    if (normalizedAnswer !== pendingChallenge.answer) {
+    const aBuf = Buffer.from(normalizedAnswer);
+    const bBuf = Buffer.from(pendingChallenge.answer);
+    if (aBuf.length !== bBuf.length || !timingSafeEqual(aBuf, bBuf)) {
       return NextResponse.json(
         {
           error: "Wrong answer. Try again.",

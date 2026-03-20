@@ -1,10 +1,9 @@
+import { getAdminSession } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
-// GET /api/centrifugo/health — protected health check
+// GET /api/centrifugo/health — protected health check (admin cookie auth)
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get("secret");
-  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+  if (!getAdminSession(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
