@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
+import { timingSafeEqual } from "crypto";
 
 export async function POST(
   request: Request,
@@ -88,8 +89,12 @@ export async function POST(
       );
     }
 
-    // Check code match (use timingSafeEqual to prevent timing attacks)
-    if (agent.verificationCode !== code) {
+    // Check code match using timingSafeEqual to prevent timing attacks
+    const codeMatch = timingSafeEqual(
+      Buffer.from(agent.verificationCode),
+      Buffer.from(code)
+    );
+    if (!codeMatch) {
       return NextResponse.json(
         { error: "Invalid verification code." },
         { status: 400 }
