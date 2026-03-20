@@ -82,7 +82,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin": "1" },
         body: JSON.stringify({ password }),
       });
       if (!res.ok) {
@@ -99,7 +99,7 @@ export default function AdminPage() {
   }
 
   async function handleLogout() {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await fetch("/api/admin/logout", { method: "POST", headers: { "X-Admin": "1" } });
     setAuthed(false);
     setStats(null);
     setAgents([]);
@@ -110,7 +110,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/agents", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin": "1" },
         body: JSON.stringify({ agentId, action }),
       });
       if (res.ok) {
@@ -132,7 +132,7 @@ export default function AdminPage() {
     setSetupLoading(true);
     setSetupResult(null);
     try {
-      const res = await fetch("/api/admin/setup", { method: "POST" });
+      const res = await fetch("/api/admin/setup", { method: "POST", headers: { "X-Admin": "1" } });
       const data = await res.json();
       setSetupResult(JSON.stringify(data, null, 2));
     } catch {

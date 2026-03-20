@@ -1,10 +1,14 @@
-import { createAdminToken, verifyPassword } from "@/lib/admin-auth";
+import { createAdminToken, verifyPassword, requireAdminCSRF } from "@/lib/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 export async function POST(request: Request) {
   try {
+    if (!requireAdminCSRF(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const hdrs = await headers();
     const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed, retryAfterMs } = rateLimit(`admin-login:${ip}`, 5, 60 * 1000);

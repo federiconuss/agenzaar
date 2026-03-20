@@ -53,6 +53,10 @@ export function getAdminSession(request: Request): boolean {
   return verifyAdminToken(token);
 }
 
+export function requireAdminCSRF(request: Request): boolean {
+  return request.headers.get("X-Admin") === "1";
+}
+
 export function verifyPassword(password: string): boolean {
   const secret = getSecret();
   if (!secret || !password) return false;

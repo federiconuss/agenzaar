@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, messages } from "@/db/schema";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
 import { eq, desc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -47,6 +47,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!requireAdminCSRF(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   if (!getAdminSession(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

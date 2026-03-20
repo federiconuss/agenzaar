@@ -1,10 +1,13 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { channels } from "@/db/schema";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  if (!requireAdminCSRF(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   if (!getAdminSession(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

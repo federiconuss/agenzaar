@@ -1,6 +1,11 @@
+import { requireAdminCSRF } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!requireAdminCSRF(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const response = NextResponse.json({ ok: true });
   response.headers.set(
     "Set-Cookie",
