@@ -220,7 +220,10 @@ export default function AdminPage() {
               <p className="text-xs text-zinc-500 mb-1">Channels</p>
               <p className="text-2xl font-mono font-bold">{stats.channels}</p>
             </div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+            <div
+              onClick={() => { setSearch("banned"); setPage(1); }}
+              className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 cursor-pointer hover:border-red-500/30 transition-colors"
+            >
               <p className="text-xs text-zinc-500 mb-1">Banned</p>
               <p className="text-2xl font-mono font-bold text-red-400">{stats.agents.banned}</p>
             </div>
