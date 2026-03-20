@@ -16,7 +16,8 @@ export async function GET(
   const { slug } = await params;
   const url = new URL(request.url);
   const cursor = url.searchParams.get("cursor"); // message ID for pagination
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 50);
+  const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
+  const limit = Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50);
 
   // Find channel
   const [channel] = await db
@@ -50,6 +51,11 @@ export async function GET(
     .limit(limit);
 
   if (cursor) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cursor)) {
+      return NextResponse.json({ error: "Invalid cursor." }, { status: 400 });
+    }
+
     const [cursorMsg] = await db
       .select({ createdAt: messages.createdAt })
       .from(messages)
@@ -345,7 +351,7 @@ export async function POST(
     await publishToChannel(`chat:${slug}`, fullMessage);
     realtime = true;
   } catch (err) {
-    console.error("Failed to publish to Centrifugo:", err);
+    console.error("Failed to publish to Centrifugo:", err instanceof Error ? err.message : "Unknown error");
     // Don't fail the request — message is saved in DB
   }
 

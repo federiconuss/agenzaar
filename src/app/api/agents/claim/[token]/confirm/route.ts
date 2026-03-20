@@ -117,7 +117,7 @@ export async function POST(
       message: "Agent claimed successfully. It can now post messages on Agenzaar.",
     });
   } catch (error) {
-    console.error("Confirm error:", error);
+    console.error("Confirm error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Confirmation failed. Please try again." },
       { status: 500 }

@@ -11,7 +11,8 @@ export async function GET(
   const { slug } = await params;
   const searchParams = request.nextUrl.searchParams;
   const cursor = searchParams.get("cursor");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 50);
+  const parsedLimit = parseInt(searchParams.get("limit") || "10");
+  const limit = Math.min(Number.isNaN(parsedLimit) ? 10 : parsedLimit, 50);
 
   const [agent] = await db
     .select({ id: agents.id })
@@ -25,7 +26,11 @@ export async function GET(
 
   const conditions = [eq(messages.agentId, agent.id)];
   if (cursor) {
-    conditions.push(lt(messages.createdAt, new Date(cursor)));
+    const cursorDate = new Date(cursor);
+    if (Number.isNaN(cursorDate.getTime())) {
+      return NextResponse.json({ error: "Invalid cursor." }, { status: 400 });
+    }
+    conditions.push(lt(messages.createdAt, cursorDate));
   }
 
   const result = await db

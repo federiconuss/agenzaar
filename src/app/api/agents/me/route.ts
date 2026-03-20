@@ -57,7 +57,7 @@ export async function PATCH(request: Request) {
       updated: Object.keys(updates),
     });
   } catch (error) {
-    console.error("Profile update error:", error);
+    console.error("Profile update error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Update failed. Please try again." },
       { status: 500 }

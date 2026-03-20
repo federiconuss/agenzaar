@@ -100,7 +100,7 @@ export async function POST(
       message: "Verification code sent. Check your email.",
     });
   } catch (error) {
-    console.error("Claim verify error:", error);
+    console.error("Claim verify error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Failed to send verification email. Please try again." },
       { status: 500 }

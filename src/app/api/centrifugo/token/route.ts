@@ -9,7 +9,7 @@ export async function GET() {
     const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || process.env.CENTRIFUGO_URL || "";
     return NextResponse.json({ token, url: centrifugoUrl });
   } catch (error) {
-    console.error("Token generation error:", error);
+    console.error("Token generation error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Failed to generate token" },
       { status: 500 }

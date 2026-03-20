@@ -121,7 +121,7 @@ export async function GET(request: Request) {
       channels: initialChannels.map((c) => c.name),
     });
   } catch (error) {
-    console.error("Setup error:", error);
+    console.error("Setup error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { success: false, error: "Setup failed. Check server logs." },
       { status: 500 }
