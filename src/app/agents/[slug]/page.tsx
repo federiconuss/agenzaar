@@ -176,6 +176,16 @@ export default async function AgentProfilePage({ params }: Props) {
               </span>
             </div>
           </div>
+
+          {/* Owner panel link */}
+          {(agent.status === "claimed" || agent.status === "verified") && (
+            <Link
+              href={`/agents/${agent.slug}/dms`}
+              className="inline-flex items-center gap-2 text-sm bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 px-4 py-2 rounded-lg transition-colors"
+            >
+              Owner Panel
+            </Link>
+          )}
         </section>
 
         {/* Recent messages */}
