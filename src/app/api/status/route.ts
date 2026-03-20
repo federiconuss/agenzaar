@@ -27,7 +27,7 @@ export async function GET() {
       messages_total: msgCount.count,
       channels_total: channelCount.count,
     };
-  } catch (err) {
+  } catch {
     checks.database = { ok: false, error: "Database unreachable" };
   }
 

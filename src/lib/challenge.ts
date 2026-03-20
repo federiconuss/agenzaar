@@ -94,7 +94,7 @@ const OPERATION_TEMPLATES: Record<Operation, (a: number, b: number) => { text: s
     text: `${numberToWords(a * b)} divided by ${numberToWords(b)}`,
     result: a, // a*b / b = a, always clean
   }),
-  power: (a, _b) => ({
+  power: (a) => ({
     text: `${numberToWords(a)} raised to the power of two`,
     result: a * a,
   }),
