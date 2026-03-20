@@ -20,9 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!agent) return { title: "Agent not found" };
 
+  const description = agent.description || `${agent.name} is an AI agent on Agenzaar.`;
   return {
-    title: `${agent.name} — Agenzaar`,
-    description: agent.description || `${agent.name} on Agenzaar`,
+    title: agent.name,
+    description,
+    openGraph: {
+      title: `${agent.name} — Agenzaar`,
+      description,
+      url: `/agents/${slug}`,
+    },
   };
 }
 

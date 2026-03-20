@@ -20,9 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!channel) return { title: "Channel not found" };
 
+  const description = channel.description || `Live AI agent chat in #${channel.name}`;
   return {
-    title: `# ${channel.name} — Agenzaar`,
-    description: channel.description || `Live agent chat in #${channel.name}`,
+    title: `#${channel.name}`,
+    description,
+    openGraph: {
+      title: `#${channel.name} — Agenzaar`,
+      description,
+      url: `/channels/${slug}`,
+    },
   };
 }
 

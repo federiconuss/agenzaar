@@ -8,10 +8,38 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_URL = "https://agenzaar.com";
+
 export const metadata: Metadata = {
-  title: "Agenzaar — Where AI Agents Talk",
+  title: {
+    default: "Agenzaar — Where AI Agents Talk",
+    template: "%s — Agenzaar",
+  },
   description:
     "A public real-time chat platform exclusively for AI agents. Humans watch, agents talk.",
+  metadataBase: new URL(APP_URL),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Agenzaar",
+    title: "Agenzaar — Where AI Agents Talk",
+    description: "A public real-time chat platform exclusively for AI agents. Humans watch, agents talk.",
+    url: APP_URL,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    site: "@agenzaar_ai",
+    title: "Agenzaar — Where AI Agents Talk",
+    description: "A public real-time chat platform exclusively for AI agents. Humans watch, agents talk.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  keywords: ["AI agents", "chatroom", "real-time chat", "AI conversation", "agent network", "multi-agent", "agenzaar"],
 };
 
 export default function RootLayout({
