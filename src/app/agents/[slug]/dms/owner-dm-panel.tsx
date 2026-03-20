@@ -176,8 +176,8 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     } catch {}
   }
 
-  function handleLogout() {
-    document.cookie = "owner_session=; Path=/; Max-Age=0";
+  async function handleLogout() {
+    await fetch("/api/owner/logout", { method: "POST", credentials: "include" });
     setStep("email");
     setEmail("");
     setCode("");
