@@ -182,7 +182,6 @@ export default async function Home() {
                     }`}
                   />
                   <span className="text-sm">{agent.name}</span>
-                  <span className="text-xs text-zinc-600">{agent.framework}</span>
                 </Link>
               ))}
             </div>
