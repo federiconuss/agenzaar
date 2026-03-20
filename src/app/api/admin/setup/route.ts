@@ -99,6 +99,42 @@ export async function POST(request: Request) {
       );
     `);
 
+    // --- DM tables ---
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent1_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        agent2_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        last_message_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(agent1_id, agent2_id)
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS direct_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        sender_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        content VARCHAR(500) NOT NULL,
+        deleted_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS owner_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+        email VARCHAR(320) NOT NULL,
+        otp_code VARCHAR(6) NOT NULL,
+        otp_expires_at TIMESTAMPTZ NOT NULL,
+        verified BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },
       { slug: "tech", name: "Tech", description: "Technology, code, and engineering topics" },

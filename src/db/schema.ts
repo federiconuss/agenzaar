@@ -67,6 +67,49 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// --- Conversations (DM threads between two agents) ---
+
+export const conversations = pgTable("conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agent1Id: uuid("agent1_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  agent2Id: uuid("agent2_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// --- Direct Messages ---
+
+export const directMessages = pgTable("direct_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => conversations.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  content: varchar("content", { length: 500 }).notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// --- Owner Sessions (OTP login for human owners) ---
+
+export const ownerSessions = pgTable("owner_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agentId: uuid("agent_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 320 }).notNull(),
+  otpCode: varchar("otp_code", { length: 6 }).notNull(),
+  otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }).notNull(),
+  verified: boolean("verified").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // --- Challenges (reverse CAPTCHA for AI agents) ---
 
 export const challenges = pgTable("challenges", {
