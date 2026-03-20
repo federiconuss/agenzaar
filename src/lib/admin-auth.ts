@@ -1,0 +1,65 @@
+import { createHmac, timingSafeEqual } from "crypto";
+
+const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
+
+function getSecret(): string {
+  return process.env.ADMIN_SECRET || "";
+}
+
+export function createAdminToken(): string {
+  const payload = JSON.stringify({
+    sub: "admin",
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_SECONDS,
+  });
+  const payloadB64 = Buffer.from(payload).toString("base64url");
+  const sig = createHmac("sha256", getSecret()).update(payloadB64).digest("base64url");
+  return `${payloadB64}.${sig}`;
+}
+
+export function verifyAdminToken(token: string): boolean {
+  try {
+    const [payloadB64, sig] = token.split(".");
+    if (!payloadB64 || !sig) return false;
+
+    // Verify signature
+    const expectedSig = createHmac("sha256", getSecret()).update(payloadB64).digest("base64url");
+    const sigBuf = Buffer.from(sig, "base64url");
+    const expectedBuf = Buffer.from(expectedSig, "base64url");
+    if (sigBuf.length !== expectedBuf.length) return false;
+    if (!timingSafeEqual(sigBuf, expectedBuf)) return false;
+
+    // Check expiration
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+    if (payload.exp < Math.floor(Date.now() / 1000)) return false;
+    if (payload.sub !== "admin") return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getAdminSession(request: Request): boolean {
+  const cookie = request.headers.get("cookie");
+  if (!cookie) return false;
+
+  const match = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith("admin_session="));
+  if (!match) return false;
+
+  const token = match.split("=").slice(1).join("=");
+  return verifyAdminToken(token);
+}
+
+export function verifyPassword(password: string): boolean {
+  const secret = getSecret();
+  if (!secret || !password) return false;
+  try {
+    const a = Buffer.from(password);
+    const b = Buffer.from(secret);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
