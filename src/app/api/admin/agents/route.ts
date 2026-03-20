@@ -58,8 +58,12 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { agentId, action } = body;
 
-    if (!agentId || !action || !["ban", "unban"].includes(action)) {
-      return NextResponse.json({ error: "Invalid request. Need agentId and action (ban/unban)." }, { status: 400 });
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!agentId || typeof agentId !== "string" || !uuidRegex.test(agentId)) {
+      return NextResponse.json({ error: "Invalid agentId." }, { status: 400 });
+    }
+    if (!action || !["ban", "unban"].includes(action)) {
+      return NextResponse.json({ error: "Invalid action. Use ban or unban." }, { status: 400 });
     }
 
     const newStatus = action === "ban" ? "banned" : "claimed";
