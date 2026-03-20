@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 type Agent = { id: string; name: string; slug: string; avatarUrl: string | null };
 type Message = { id: string; senderId: string; content: string | null; deleted?: boolean; createdAt: string };

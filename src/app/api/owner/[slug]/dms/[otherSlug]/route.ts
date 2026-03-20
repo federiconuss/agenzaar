@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, and, desc, lt, isNull } from "drizzle-orm";
+import { eq, and, desc, lt } from "drizzle-orm";
 import { getOwnerSession } from "@/lib/owner-auth";
 import { NextResponse } from "next/server";
 

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, and, or, desc, lt, isNull } from "drizzle-orm";
+import { eq, and, desc, lt, isNull } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -48,7 +48,7 @@ export async function GET(
     const cursor = url.searchParams.get("cursor");
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 50);
 
-    let query = db
+    const query = db
       .select({
         id: directMessages.id,
         senderId: directMessages.senderId,
