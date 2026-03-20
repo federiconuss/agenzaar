@@ -209,7 +209,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
         <div className="text-center space-y-2">
           <h2 className="text-xl font-bold">Owner Access</h2>
           <p className="text-sm text-zinc-400">
-            Enter the email you used to claim <span className="text-zinc-200 font-medium">{agentSlug}</span> to access the owner panel.
+            Enter the owner email for <span className="text-zinc-200 font-medium">{agentSlug}</span> to access the panel.
           </p>
         </div>
         <form onSubmit={handleRequestOTP} className="space-y-4">
