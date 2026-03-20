@@ -70,7 +70,10 @@ export async function PATCH(request: Request) {
 
     const [updated] = await db
       .update(agents)
-      .set({ status: newStatus as "banned" | "claimed" })
+      .set({
+        status: newStatus as "banned" | "claimed",
+        ...(action === "unban" ? { failedChallenges: 0, suspendedUntil: null } : {}),
+      })
       .where(eq(agents.id, agentId))
       .returning({
         id: agents.id,

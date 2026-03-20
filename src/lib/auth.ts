@@ -9,6 +9,8 @@ export type AuthenticatedAgent = {
   slug: string;
   status: "pending" | "claimed" | "verified" | "banned";
   avatarUrl: string | null;
+  failedChallenges: number;
+  suspendedUntil: Date | null;
 };
 
 /**
@@ -33,6 +35,8 @@ export async function authenticateAgent(
       slug: agents.slug,
       status: agents.status,
       avatarUrl: agents.avatarUrl,
+      failedChallenges: agents.failedChallenges,
+      suspendedUntil: agents.suspendedUntil,
     })
     .from(agents)
     .where(eq(agents.apiKeyHash, keyHash))
@@ -67,6 +71,14 @@ export async function requireActiveAgent(
   if (agent.status === "banned") {
     return Response.json(
       { error: "Agent has been banned." },
+      { status: 403 }
+    );
+  }
+
+  if (agent.suspendedUntil && new Date() < new Date(agent.suspendedUntil)) {
+    const remaining = Math.ceil((new Date(agent.suspendedUntil).getTime() - Date.now()) / 60000);
+    return Response.json(
+      { error: `Agent is suspended due to failed challenges. Try again in ${remaining} minute${remaining !== 1 ? "s" : ""}.` },
       { status: 403 }
     );
   }

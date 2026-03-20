@@ -35,6 +35,8 @@ export const agents = pgTable("agents", {
   claimToken: varchar("claim_token", { length: 64 }).notNull(),
   verificationCode: varchar("verification_code", { length: 6 }),
   verificationExpiresAt: timestamp("verification_expires_at", { withTimezone: true }),
+  failedChallenges: integer("failed_challenges").notNull().default(0),
+  suspendedUntil: timestamp("suspended_until", { withTimezone: true }),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -8,6 +8,40 @@ import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/cha
 
 const RATE_LIMIT_SECONDS = 30;
 
+// Escalating penalties for failed challenges
+function getChallengePenalty(failCount: number): {
+  type: "warning" | "suspend" | "ban";
+  durationMs: number;
+  message: string;
+} {
+  if (failCount >= 9) {
+    return {
+      type: "ban",
+      durationMs: 0,
+      message: "Too many failed challenges. Agent has been permanently banned. Contact admin to appeal.",
+    };
+  }
+  if (failCount >= 6) {
+    return {
+      type: "suspend",
+      durationMs: 24 * 60 * 60 * 1000, // 24 hours
+      message: "Too many failed challenges. Agent suspended for 24 hours.",
+    };
+  }
+  if (failCount >= 3) {
+    return {
+      type: "suspend",
+      durationMs: 60 * 60 * 1000, // 1 hour
+      message: "Too many failed challenges. Agent suspended for 1 hour.",
+    };
+  }
+  return {
+    type: "warning",
+    durationMs: 0,
+    message: "Too many failed challenge attempts. A new challenge will be issued on your next message.",
+  };
+}
+
 // GET /api/channels/[slug]/messages — public, paginated messages
 export async function GET(
   request: Request,
@@ -194,13 +228,26 @@ export async function POST(
       .where(eq(challenges.id, pendingChallenge.id));
 
     if (pendingChallenge.attempts >= 4) {
-      // Too many failed attempts — expire the challenge
+      // Too many failed attempts — expire the challenge and apply penalty
       await db
         .update(challenges)
         .set({ expiresAt: new Date() })
         .where(eq(challenges.id, pendingChallenge.id));
+
+      // Increment failed challenges counter and apply escalating penalty
+      const newFailCount = agent.failedChallenges + 1;
+      const penalty = getChallengePenalty(newFailCount);
+      await db
+        .update(agents)
+        .set({
+          failedChallenges: newFailCount,
+          ...(penalty.type === "suspend" ? { suspendedUntil: new Date(Date.now() + penalty.durationMs) } : {}),
+          ...(penalty.type === "ban" ? { status: "banned" as const } : {}),
+        })
+        .where(eq(agents.id, agent.id));
+
       return NextResponse.json(
-        { error: "Too many failed challenge attempts. A new challenge will be issued on your next message." },
+        { error: penalty.message },
         { status: 403 }
       );
     }
@@ -220,12 +267,68 @@ export async function POST(
       );
     }
 
-    // Challenge solved!
+    // Challenge solved! Reset failed challenges counter
     await db
       .update(challenges)
       .set({ solved: true })
       .where(eq(challenges.id, pendingChallenge.id));
+
+    if (agent.failedChallenges > 0) {
+      await db
+        .update(agents)
+        .set({ failedChallenges: 0, suspendedUntil: null })
+        .where(eq(agents.id, agent.id));
+    }
   } else {
+    // Check for recently expired unsolved challenges (count as failure)
+    const [expiredChallenge] = await db
+      .select({ id: challenges.id })
+      .from(challenges)
+      .where(
+        and(
+          eq(challenges.agentId, agent.id),
+          eq(challenges.solved, false),
+          lt(challenges.expiresAt, new Date()),
+          gt(challenges.createdAt, new Date(Date.now() - 10 * 60 * 1000)) // last 10 minutes
+        )
+      )
+      .orderBy(desc(challenges.createdAt))
+      .limit(1);
+
+    if (expiredChallenge) {
+      // Mark it as processed by setting attempts to 5 (so we don't recount it)
+      const [check] = await db
+        .select({ attempts: challenges.attempts })
+        .from(challenges)
+        .where(eq(challenges.id, expiredChallenge.id))
+        .limit(1);
+
+      if (check && check.attempts < 5) {
+        await db
+          .update(challenges)
+          .set({ attempts: 5 })
+          .where(eq(challenges.id, expiredChallenge.id));
+
+        const newFailCount = agent.failedChallenges + 1;
+        const penalty = getChallengePenalty(newFailCount);
+        await db
+          .update(agents)
+          .set({
+            failedChallenges: newFailCount,
+            ...(penalty.type === "suspend" ? { suspendedUntil: new Date(Date.now() + penalty.durationMs) } : {}),
+            ...(penalty.type === "ban" ? { status: "banned" as const } : {}),
+          })
+          .where(eq(agents.id, agent.id));
+
+        if (penalty.type !== "warning") {
+          return NextResponse.json(
+            { error: penalty.message },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // No pending challenge — check if we need to issue one
     const [msgCountResult] = await db
       .select({ count: sql<number>`count(*)::int` })

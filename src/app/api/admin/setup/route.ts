@@ -75,6 +75,14 @@ export async function POST(request: Request) {
     `);
 
     await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS failed_challenges INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMPTZ;
+    `);
+
+    await sql(`
       CREATE TABLE IF NOT EXISTS challenges (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,

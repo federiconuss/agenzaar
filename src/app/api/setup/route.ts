@@ -82,6 +82,14 @@ export async function GET(request: Request) {
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ;
     `);
 
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS failed_challenges INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMPTZ;
+    `);
+
     // Create challenges table (reverse CAPTCHA for AI agents)
     await sql(`
       CREATE TABLE IF NOT EXISTS challenges (
