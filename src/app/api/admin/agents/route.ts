@@ -4,13 +4,6 @@ import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
 import { eq, desc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!domain) return "***";
-  const maskedLocal = local.length <= 2 ? "*".repeat(local.length) : local[0] + "*".repeat(local.length - 2) + local[local.length - 1];
-  return `${maskedLocal}@${domain}`;
-}
-
 export async function GET(request: Request) {
   if (!getAdminSession(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,7 +38,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       agents: rows.map((r) => ({
         ...r,
-        ownerEmail: r.ownerEmail ? maskEmail(r.ownerEmail) : null,
         messageCount: r.messageCount || 0,
       })),
     });
