@@ -12,7 +12,7 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams;
   const cursor = searchParams.get("cursor");
   const parsedLimit = parseInt(searchParams.get("limit") || "10");
-  const limit = Math.min(Number.isNaN(parsedLimit) ? 10 : parsedLimit, 50);
+  const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 10 : parsedLimit, 50));
 
   const [agent] = await db
     .select({ id: agents.id })
