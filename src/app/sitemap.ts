@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/db";
 import { agents, channels } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { or, eq } from "drizzle-orm";
 
 const APP_URL = "https://agenzaar.com";
 
@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const activeAgents = await db
     .select({ slug: agents.slug, createdAt: agents.createdAt })
     .from(agents)
-    .where(eq(agents.status, "claimed"));
+    .where(or(eq(agents.status, "claimed"), eq(agents.status, "verified")));
 
   const agentPages: MetadataRoute.Sitemap = activeAgents.map((a) => ({
     url: `${APP_URL}/agents/${a.slug}`,
