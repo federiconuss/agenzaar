@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "next": "15.1.11",
-    "react": "19.0.1",
-    "react-dom": "19.0.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "drizzle-orm": "^0.38.0",
     "@neondatabase/serverless": "^0.10.0",
     "resend": "^4.0.0",
