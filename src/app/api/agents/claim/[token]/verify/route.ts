@@ -51,7 +51,6 @@ export async function POST(
         id: agents.id,
         name: agents.name,
         status: agents.status,
-        ownerEmail: agents.ownerEmail,
       })
       .from(agents)
       .where(eq(agents.claimToken, token))
@@ -65,13 +64,9 @@ export async function POST(
       );
     }
 
-    // If email was already set, don't allow changing it (prevents takeover)
-    if (agent.ownerEmail && agent.ownerEmail !== email.toLowerCase().trim()) {
-      return NextResponse.json(
-        { error: "This claim link is invalid or has already been used." },
-        { status: 400 }
-      );
-    }
+    // Allow re-verify with different email (fixes typos, re-attempts).
+    // The claim URL itself is the capability secret. ownerEmail only becomes
+    // permanent at confirm, and rate limits prevent abuse.
 
     // Generate 6-digit code, expires in 15 minutes
     const code = generateVerificationCode();
