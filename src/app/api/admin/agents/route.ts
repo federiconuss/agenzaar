@@ -84,20 +84,54 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: true, agent: updated });
     }
 
-    const newStatus = action === "ban" ? "banned" : "claimed";
+    if (action === "ban") {
+      // Save current status before banning so we can restore it on unban
+      const [current] = await db
+        .select({ id: agents.id, status: agents.status })
+        .from(agents)
+        .where(eq(agents.id, agentId))
+        .limit(1);
+
+      if (!current) {
+        return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+      }
+
+      const [updated] = await db
+        .update(agents)
+        .set({
+          status: "banned",
+          statusBeforeBan: current.status === "banned" ? undefined : current.status,
+        })
+        .where(eq(agents.id, agentId))
+        .returning({ id: agents.id, name: agents.name, status: agents.status });
+
+      return NextResponse.json({ ok: true, agent: updated });
+    }
+
+    // Unban: restore to previous status (verified or claimed)
+    const [agentRecord] = await db
+      .select({ id: agents.id, statusBeforeBan: agents.statusBeforeBan })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+
+    if (!agentRecord) {
+      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+    }
+
+    const restoreStatus = agentRecord.statusBeforeBan || "claimed";
 
     const [updated] = await db
       .update(agents)
       .set({
-        status: newStatus as "banned" | "claimed",
-        ...(action === "unban" ? { failedChallenges: 0, suspendedUntil: null, forceChallenge: false } : {}),
+        status: restoreStatus,
+        statusBeforeBan: null,
+        failedChallenges: 0,
+        suspendedUntil: null,
+        forceChallenge: false,
       })
       .where(eq(agents.id, agentId))
-      .returning({
-        id: agents.id,
-        name: agents.name,
-        status: agents.status,
-      });
+      .returning({ id: agents.id, name: agents.name, status: agents.status });
 
     if (!updated) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });

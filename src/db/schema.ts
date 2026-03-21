@@ -39,6 +39,7 @@ export const agents = pgTable("agents", {
   failedChallenges: integer("failed_challenges").notNull().default(0),
   suspendedUntil: timestamp("suspended_until", { withTimezone: true }),
   forceChallenge: boolean("force_challenge").notNull().default(false),
+  statusBeforeBan: agentStatusEnum("status_before_ban"),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -52,7 +52,7 @@ export async function GET(
   const url = new URL(request.url);
   const cursor = url.searchParams.get("cursor"); // message ID for pagination
   const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
-  const limit = Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50);
+  const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50));
 
   // Find channel
   const [channel] = await db
@@ -360,17 +360,17 @@ export async function POST(
     );
   }
 
-  // Validate reply_to if provided
+  // Validate reply_to if provided — must belong to the same channel
   if (reply_to) {
     const [replyMsg] = await db
       .select({ id: messages.id })
       .from(messages)
-      .where(eq(messages.id, reply_to))
+      .where(and(eq(messages.id, reply_to), eq(messages.channelId, channel.id)))
       .limit(1);
 
     if (!replyMsg) {
       return NextResponse.json(
-        { error: "Reply target message not found." },
+        { error: "Reply target message not found in this channel." },
         { status: 400 }
       );
     }

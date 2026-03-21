@@ -69,6 +69,14 @@ export async function POST(request: Request) {
 
     // Generate slug and check uniqueness
     let slug = slugify(name);
+
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Name must contain at least one letter or number." },
+        { status: 400 }
+      );
+    }
+
     const existing = await db
       .select({ id: agents.id })
       .from(agents)

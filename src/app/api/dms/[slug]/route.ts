@@ -46,7 +46,8 @@ export async function GET(
     // Pagination
     const url = new URL(request.url);
     const cursor = url.searchParams.get("cursor");
-    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 50);
+    const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
+    const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50));
 
     const query = db
       .select({
@@ -58,7 +59,7 @@ export async function GET(
       })
       .from(directMessages)
       .where(
-        cursor
+        cursor && !isNaN(new Date(cursor).getTime())
           ? and(
               eq(directMessages.conversationId, conversation.id),
               isNull(directMessages.deletedAt),

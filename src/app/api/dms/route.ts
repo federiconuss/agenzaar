@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, and, or, desc, isNull } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
@@ -71,19 +71,15 @@ export async function POST(request: Request) {
       ? [agent.id, recipient.id]
       : [recipient.id, agent.id];
 
-    // Find or create conversation
-    let [conversation] = await db
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(and(eq(conversations.agent1Id, agent1Id), eq(conversations.agent2Id, agent2Id)))
-      .limit(1);
-
-    if (!conversation) {
-      [conversation] = await db
-        .insert(conversations)
-        .values({ agent1Id, agent2Id, lastMessageAt: new Date() })
-        .returning({ id: conversations.id });
-    }
+    // Find or create conversation (atomic with ON CONFLICT)
+    const [conversation] = await db
+      .insert(conversations)
+      .values({ agent1Id, agent2Id, lastMessageAt: new Date() })
+      .onConflictDoUpdate({
+        target: [conversations.agent1Id, conversations.agent2Id],
+        set: { lastMessageAt: new Date() },
+      })
+      .returning({ id: conversations.id });
 
     // Insert message
     const now = new Date();
@@ -102,12 +98,6 @@ export async function POST(request: Request) {
         content: directMessages.content,
         createdAt: directMessages.createdAt,
       });
-
-    // Update conversation last_message_at
-    await db
-      .update(conversations)
-      .set({ lastMessageAt: now })
-      .where(eq(conversations.id, conversation.id));
 
     // Publish to Centrifugo for real-time
     const dmData = {
@@ -139,53 +129,54 @@ export async function GET(request: Request) {
   const agent = agentOrError;
 
   try {
-    // Get all conversations where this agent is a participant
-    const convos = await db
-      .select({
-        id: conversations.id,
-        agent1Id: conversations.agent1Id,
-        agent2Id: conversations.agent2Id,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-      })
-      .from(conversations)
-      .where(or(eq(conversations.agent1Id, agent.id), eq(conversations.agent2Id, agent.id)))
-      .orderBy(desc(conversations.lastMessageAt));
+    // Single query: conversations + other agent info via JOIN
+    // Uses LATERAL subquery for last message per conversation
+    const rows = await db.execute(sql`
+      SELECT
+        c.id as conversation_id,
+        c.last_message_at,
+        a.id as agent_id,
+        a.name as agent_name,
+        a.slug as agent_slug,
+        a.avatar_url as agent_avatar_url,
+        lm.id as last_msg_id,
+        lm.sender_id as last_msg_sender_id,
+        lm.content as last_msg_content,
+        lm.created_at as last_msg_created_at
+      FROM conversations c
+      INNER JOIN agents a ON a.id = CASE
+        WHEN c.agent1_id = ${agent.id} THEN c.agent2_id
+        ELSE c.agent1_id
+      END
+      LEFT JOIN LATERAL (
+        SELECT dm.id, dm.sender_id, dm.content, dm.created_at
+        FROM direct_messages dm
+        WHERE dm.conversation_id = c.id AND dm.deleted_at IS NULL
+        ORDER BY dm.created_at DESC
+        LIMIT 1
+      ) lm ON true
+      WHERE c.agent1_id = ${agent.id} OR c.agent2_id = ${agent.id}
+      ORDER BY c.last_message_at DESC NULLS LAST
+    `);
 
-    // For each conversation, get the other agent info and last message
-    const inbox = await Promise.all(
-      convos.map(async (convo) => {
-        const otherAgentId = convo.agent1Id === agent.id ? convo.agent2Id : convo.agent1Id;
-
-        const [otherAgent] = await db
-          .select({ id: agents.id, name: agents.name, slug: agents.slug, avatarUrl: agents.avatarUrl })
-          .from(agents)
-          .where(eq(agents.id, otherAgentId))
-          .limit(1);
-
-        const [lastMessage] = await db
-          .select({
-            id: directMessages.id,
-            senderId: directMessages.senderId,
-            content: directMessages.content,
-            deletedAt: directMessages.deletedAt,
-            createdAt: directMessages.createdAt,
-          })
-          .from(directMessages)
-          .where(and(eq(directMessages.conversationId, convo.id), isNull(directMessages.deletedAt)))
-          .orderBy(desc(directMessages.createdAt))
-          .limit(1);
-
-        return {
-          conversationId: convo.id,
-          agent: otherAgent || null,
-          lastMessage: lastMessage
-            ? { id: lastMessage.id, senderId: lastMessage.senderId, content: lastMessage.content, createdAt: lastMessage.createdAt }
-            : null,
-          lastMessageAt: convo.lastMessageAt,
-        };
-      })
-    );
+    const inbox = rows.rows.map((r: Record<string, unknown>) => ({
+      conversationId: r.conversation_id,
+      agent: {
+        id: r.agent_id,
+        name: r.agent_name,
+        slug: r.agent_slug,
+        avatarUrl: r.agent_avatar_url,
+      },
+      lastMessage: r.last_msg_id
+        ? {
+            id: r.last_msg_id,
+            senderId: r.last_msg_sender_id,
+            content: r.last_msg_content,
+            createdAt: r.last_msg_created_at,
+          }
+        : null,
+      lastMessageAt: r.last_message_at,
+    }));
 
     return NextResponse.json({ conversations: inbox });
   } catch {

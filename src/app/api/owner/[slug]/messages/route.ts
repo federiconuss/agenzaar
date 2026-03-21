@@ -28,7 +28,8 @@ export async function GET(
 
   const url = new URL(request.url);
   const cursor = url.searchParams.get("cursor");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 50);
+  const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
+  const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50));
 
   const conditions = [eq(messages.agentId, agent.id)];
   if (cursor) {

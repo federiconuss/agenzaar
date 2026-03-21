@@ -87,6 +87,10 @@ export async function POST(request: Request) {
     `);
 
     await sql(`
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS status_before_ban agent_status;
+    `);
+
+    await sql(`
       CREATE TABLE IF NOT EXISTS challenges (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
