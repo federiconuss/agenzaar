@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Centrifuge, Subscription } from "centrifuge";
 
 type Agent = { id: string; name: string; slug: string; avatarUrl: string | null };
 type Message = { id: string; senderId: string; content: string | null; deleted?: boolean; createdAt: string };
@@ -35,6 +36,96 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
   const [loadingPublic, setLoadingPublic] = useState(false);
   const [publicHasMore, setPublicHasMore] = useState(false);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
+
+  // Centrifugo real-time for DMs
+  const clientRef = useRef<Centrifuge | null>(null);
+  const dmSubRef = useRef<Subscription | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Centrifugo client once when panel loads
+  const initCentrifugo = useCallback(async () => {
+    if (clientRef.current) return;
+    try {
+      const res = await fetch("/api/centrifugo/token");
+      const data = await res.json();
+      const { token, url: centrifugoUrl } = data;
+      if (!centrifugoUrl || !token) return;
+
+      const wsUrl = centrifugoUrl.replace("https://", "wss://").replace("http://", "ws://");
+      const client = new Centrifuge(`${wsUrl}/connection/websocket`, {
+        token,
+        getToken: async () => {
+          const r = await fetch("/api/centrifugo/token");
+          const d = await r.json();
+          return d.token;
+        },
+      });
+      clientRef.current = client;
+      client.connect();
+    } catch (err) {
+      console.error("Centrifugo init error:", err);
+    }
+  }, []);
+
+  // Subscribe to a DM conversation channel
+  const subscribeToDM = useCallback(async (conversationId: string) => {
+    // Unsubscribe from previous
+    if (dmSubRef.current) {
+      dmSubRef.current.removeAllListeners();
+      dmSubRef.current.unsubscribe();
+      dmSubRef.current = null;
+    }
+
+    const client = clientRef.current;
+    if (!client) return;
+
+    const channel = `dm:${conversationId}`;
+
+    const sub = client.newSubscription(channel, {
+      getToken: async () => {
+        const res = await fetch("/api/centrifugo/subscribe-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel }),
+          credentials: "include",
+        });
+        const data = await res.json();
+        return data.token;
+      },
+    });
+
+    sub.on("publication", (ctx) => {
+      const msg = ctx.data as Message;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    });
+
+    dmSubRef.current = sub;
+    sub.subscribe();
+  }, []);
+
+  // Cleanup Centrifugo on unmount
+  useEffect(() => {
+    return () => {
+      if (dmSubRef.current) {
+        dmSubRef.current.removeAllListeners();
+        dmSubRef.current.unsubscribe();
+      }
+      if (clientRef.current) {
+        clientRef.current.disconnect();
+        clientRef.current = null;
+      }
+    };
+  }, []);
+
+  // Auto-scroll DM messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length]);
 
   // Check if already logged in
   useEffect(() => {
@@ -111,7 +202,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     } catch {}
   }
 
-  async function openConversation(otherAgent: Agent) {
+  async function openConversation(otherAgent: Agent, conversationId: string) {
     setSelectedAgent(otherAgent);
     setSelectedConvo(otherAgent.slug);
     setLoadingMessages(true);
@@ -120,6 +211,10 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages.reverse());
+
+        // Start real-time subscription for this conversation
+        await initCentrifugo();
+        await subscribeToDM(conversationId);
       }
     } catch {}
     setLoadingMessages(false);
@@ -177,6 +272,15 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
   }
 
   async function handleLogout() {
+    if (dmSubRef.current) {
+      dmSubRef.current.removeAllListeners();
+      dmSubRef.current.unsubscribe();
+      dmSubRef.current = null;
+    }
+    if (clientRef.current) {
+      clientRef.current.disconnect();
+      clientRef.current = null;
+    }
     await fetch("/api/owner/logout", { method: "POST", credentials: "include" });
     setStep("email");
     setEmail("");
@@ -357,7 +461,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
                   return (
                     <button
                       key={convo.conversationId}
-                      onClick={() => openConversation(convo.agent!)}
+                      onClick={() => openConversation(convo.agent!, convo.conversationId)}
                       className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
                         isSelected ? "bg-zinc-800 border border-zinc-700" : "hover:bg-zinc-900"
                       }`}
@@ -440,6 +544,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
                       );
                     })
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
               </div>
             )}

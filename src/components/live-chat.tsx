@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { Centrifuge, Subscription } from "centrifuge";
 
 type Message = {
   id: string;
@@ -32,6 +33,12 @@ function timeAgo(date: Date): string {
   return `${days}d ago`;
 }
 
+async function getToken(): Promise<string> {
+  const res = await fetch("/api/centrifugo/token");
+  const data = await res.json();
+  return data.token;
+}
+
 export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [connected, setConnected] = useState(false);
@@ -39,8 +46,9 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasOlder, setHasOlder] = useState(initialMessages.length >= 50);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const clientRef = useRef<Centrifuge | null>(null);
+  const subRef = useRef<Subscription | null>(null);
 
   async function loadOlder() {
     if (loadingOlder || !hasOlder || messages.length === 0) return;
@@ -63,6 +71,16 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
     }
   }
 
+  const handlePublication = useCallback((ctx: { data: Message }) => {
+    const msg = ctx.data;
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+    setNewCount((c) => c + 1);
+    setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
+  }, []);
+
   // Auto-scroll when new messages arrive
   useEffect(() => {
     if (bottomRef.current) {
@@ -70,21 +88,16 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
     }
   }, [messages.length]);
 
-  // Connect to Centrifugo
+  // Connect to Centrifugo via SDK
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    let pingInterval: NodeJS.Timeout;
     let cancelled = false;
-    let reconnectTimeout: NodeJS.Timeout;
 
-    async function connect() {
-      if (cancelled) return;
-
+    async function init() {
       try {
-        const tokenRes = await fetch("/api/centrifugo/token");
+        const res = await fetch("/api/centrifugo/token");
         if (cancelled) return;
-        const tokenData = await tokenRes.json();
-        const { token, url: centrifugoUrl } = tokenData;
+        const data = await res.json();
+        const { token, url: centrifugoUrl } = data;
 
         if (!centrifugoUrl || !token) {
           console.warn("Centrifugo not configured, real-time disabled");
@@ -92,83 +105,51 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
         }
 
         const wsUrl = centrifugoUrl.replace("https://", "wss://").replace("http://", "ws://");
-        ws = new WebSocket(`${wsUrl}/connection/websocket`);
-        wsRef.current = ws;
 
-        ws.onopen = () => {
-          if (cancelled) { ws?.close(); return; }
-          ws!.send(
-            JSON.stringify({
-              id: 1,
-              connect: { token, name: "web-viewer" },
-            })
-          );
-        };
+        const client = new Centrifuge(`${wsUrl}/connection/websocket`, {
+          token,
+          getToken,
+        });
 
-        ws.onmessage = (event) => {
-          if (cancelled) return;
-          const data = JSON.parse(event.data);
+        clientRef.current = client;
 
-          if (data.error) {
-            console.error("[centrifugo] error:", data.error);
-            return;
-          }
+        const sub = client.newSubscription(`chat:${channelSlug}`);
+        subRef.current = sub;
 
-          if (data.id === 1 && data.connect) {
-            setConnected(true);
-            ws!.send(
-              JSON.stringify({
-                id: 2,
-                subscribe: { channel: `chat:${channelSlug}` },
-              })
-            );
-          }
+        sub.on("publication", handlePublication);
 
-          if (data.push?.pub?.data) {
-            const msg = data.push.pub.data as Message;
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-            setNewCount((c) => c + 1);
-            setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
-          }
-        };
+        sub.on("subscribed", () => {
+          if (!cancelled) setConnected(true);
+        });
 
-        ws.onclose = () => {
-          setConnected(false);
-          clearInterval(pingInterval);
-          if (!cancelled) {
-            reconnectTimeout = setTimeout(connect, 3000);
-          }
-        };
+        sub.on("unsubscribed", () => {
+          if (!cancelled) setConnected(false);
+        });
 
-        ws.onerror = () => {
-          setConnected(false);
-        };
+        client.on("disconnected", () => {
+          if (!cancelled) setConnected(false);
+        });
 
-        pingInterval = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({}));
-          }
-        }, 25000);
+        sub.subscribe();
+        client.connect();
       } catch (err) {
         console.error("Centrifugo connection error:", err);
-        if (!cancelled) {
-          reconnectTimeout = setTimeout(connect, 5000);
-        }
       }
     }
 
-    connect();
+    init();
 
     return () => {
       cancelled = true;
-      clearInterval(pingInterval);
-      clearTimeout(reconnectTimeout);
-      if (ws) ws.close();
+      if (subRef.current) {
+        subRef.current.removeAllListeners();
+        subRef.current.unsubscribe();
+      }
+      if (clientRef.current) {
+        clientRef.current.disconnect();
+      }
     };
-  }, [channelSlug]);
+  }, [channelSlug, handlePublication]);
 
   return (
     <div className="flex flex-col h-full">
