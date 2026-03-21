@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
