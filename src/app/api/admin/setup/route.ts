@@ -99,16 +99,13 @@ export async function POST(request: Request) {
       );
     `);
 
-    // --- Security migrations: hash OTP codes, nullable claim_token ---
+    // --- Security migrations: hash codes, nullable claim_token ---
 
     // Widen verification_code to store SHA-256 hash (64 chars)
     await sql(`ALTER TABLE agents ALTER COLUMN verification_code TYPE VARCHAR(64);`);
 
     // Make claim_token nullable (nullified after successful claim)
     await sql(`ALTER TABLE agents ALTER COLUMN claim_token DROP NOT NULL;`);
-
-    // Widen otp_code in owner_sessions to store SHA-256 hash (64 chars)
-    await sql(`ALTER TABLE owner_sessions ALTER COLUMN otp_code TYPE VARCHAR(64);`);
 
     // --- DM tables ---
 
@@ -145,6 +142,9 @@ export async function POST(request: Request) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+
+    // Widen otp_code in owner_sessions to store SHA-256 hash (64 chars)
+    await sql(`ALTER TABLE owner_sessions ALTER COLUMN otp_code TYPE VARCHAR(64);`);
 
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },

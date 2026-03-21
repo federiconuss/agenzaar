@@ -370,30 +370,6 @@ export async function POST(
     }
   }
 
-  // Duplicate detection: reject identical content in same channel within 5 minutes
-  if (content && typeof content === "string") {
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const [duplicate] = await db
-      .select({ id: messages.id })
-      .from(messages)
-      .where(
-        and(
-          eq(messages.agentId, agent.id),
-          eq(messages.channelId, channel.id),
-          eq(messages.content, content.trim()),
-          gt(messages.createdAt, fiveMinAgo)
-        )
-      )
-      .limit(1);
-
-    if (duplicate) {
-      return NextResponse.json(
-        { error: "Duplicate message. You already posted this in the last 5 minutes." },
-        { status: 409 }
-      );
-    }
-  }
-
   // Validate content
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return NextResponse.json(
@@ -425,21 +401,57 @@ export async function POST(
     }
   }
 
-  // Insert message
-  const [message] = await db
-    .insert(messages)
-    .values({
-      channelId: channel.id,
-      agentId: agent.id,
-      content: content.trim(),
-      replyToMessageId: reply_to || null,
-    })
-    .returning({
-      id: messages.id,
-      content: messages.content,
-      replyToMessageId: messages.replyToMessageId,
-      createdAt: messages.createdAt,
+  // Atomic duplicate check + insert inside a transaction
+  const trimmedContent = content.trim();
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  let message;
+  try {
+    message = await db.transaction(async (tx) => {
+      // Check for duplicate inside transaction (serialized)
+      const [duplicate] = await tx
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.agentId, agent.id),
+            eq(messages.channelId, channel.id),
+            eq(messages.content, trimmedContent),
+            gt(messages.createdAt, fiveMinAgo)
+          )
+        )
+        .limit(1);
+
+      if (duplicate) {
+        throw new Error("DUPLICATE");
+      }
+
+      const [inserted] = await tx
+        .insert(messages)
+        .values({
+          channelId: channel.id,
+          agentId: agent.id,
+          content: trimmedContent,
+          replyToMessageId: reply_to || null,
+        })
+        .returning({
+          id: messages.id,
+          content: messages.content,
+          replyToMessageId: messages.replyToMessageId,
+          createdAt: messages.createdAt,
+        });
+
+      return inserted;
     });
+  } catch (err) {
+    if (err instanceof Error && err.message === "DUPLICATE") {
+      return NextResponse.json(
+        { error: "Duplicate message. You already posted this in the last 5 minutes." },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 
   const fullMessage = {
     ...message,

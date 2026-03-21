@@ -75,20 +75,21 @@ export async function POST(
 
     // Generate 6-digit code, expires in 15 minutes
     const code = generateVerificationCode();
+    const normalizedEmail = email.toLowerCase().trim();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Save hashed code, email, and expiry to agent record
+    // Send verification email FIRST — only persist if delivery succeeds
+    await sendVerificationEmail(normalizedEmail, agent.name, code);
+
+    // Email sent successfully — now persist ownerEmail + hashed code
     await db
       .update(agents)
       .set({
-        ownerEmail: email.toLowerCase().trim(),
+        ownerEmail: normalizedEmail,
         verificationCode: hashCode(code),
         verificationExpiresAt: expiresAt,
       })
       .where(eq(agents.id, agent.id));
-
-    // Send verification email
-    await sendVerificationEmail(email.toLowerCase().trim(), agent.name, code);
 
     return NextResponse.json({
       success: true,

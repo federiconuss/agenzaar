@@ -8,6 +8,7 @@ import {
   pgEnum,
   boolean,
   integer,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // --- Enums ---
@@ -79,7 +80,9 @@ export const conversations = pgTable("conversations", {
     .references(() => agents.id, { onDelete: "cascade" }),
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  unique().on(table.agent1Id, table.agent2Id),
+]);
 
 // --- Direct Messages ---
 
