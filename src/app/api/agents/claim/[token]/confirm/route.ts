@@ -57,16 +57,10 @@ export async function POST(
       .where(eq(agents.claimToken, token))
       .limit(1);
 
-    if (!agent) {
+    // Unified error — don't reveal token/agent state
+    if (!agent || agent.status !== "pending") {
       return NextResponse.json(
-        { error: "Invalid claim token." },
-        { status: 404 }
-      );
-    }
-
-    if (agent.status !== "pending") {
-      return NextResponse.json(
-        { error: "This agent has already been claimed." },
+        { error: "This claim link is invalid or has already been used." },
         { status: 400 }
       );
     }
@@ -74,7 +68,7 @@ export async function POST(
     // Check if code exists
     if (!agent.verificationCode) {
       return NextResponse.json(
-        { error: "No verification code found. Please request a new one." },
+        { error: "Verification code expired or not found. Please request a new one." },
         { status: 400 }
       );
     }

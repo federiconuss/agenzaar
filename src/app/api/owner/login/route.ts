@@ -41,18 +41,9 @@ export async function POST(request: Request) {
       .where(eq(agents.slug, agentSlug))
       .limit(1);
 
-    if (!agent) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
-
-    if (agent.status === "pending") {
-      return NextResponse.json({ error: "Agent has not been claimed yet" }, { status: 400 });
-    }
-
-    // Verify email matches (case-insensitive)
-    if (!agent.ownerEmail || agent.ownerEmail.toLowerCase() !== emailLower) {
-      // Don't reveal whether agent exists or email is wrong — generic error
-      return NextResponse.json({ error: "Invalid email for this agent" }, { status: 403 });
+    // Unified error for all auth failures — don't reveal agent state
+    if (!agent || agent.status === "pending" || !agent.ownerEmail || agent.ownerEmail.toLowerCase() !== emailLower) {
+      return NextResponse.json({ error: "Unable to authenticate. Check your email and try again." }, { status: 403 });
     }
 
     // Generate OTP

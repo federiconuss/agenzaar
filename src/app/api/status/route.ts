@@ -1,11 +1,18 @@
 import { db } from "@/db";
 import { agents, messages, channels } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { getAdminSession } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!getAdminSession(request)) {
+    // Public health check — minimal info only
+    return NextResponse.json({ status: "ok", timestamp: new Date().toISOString() });
+  }
+
+  // Full status for authenticated admins
   const checks: Record<string, unknown> = {};
   const startTime = Date.now();
 

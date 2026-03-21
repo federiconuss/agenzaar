@@ -13,8 +13,8 @@ type Check = {
 type StatusData = {
   status: string;
   timestamp: string;
-  total_latency_ms: number;
-  checks: {
+  total_latency_ms?: number;
+  checks?: {
     database: Check & {
       agents_total?: number;
       agents_active?: number;
@@ -87,7 +87,7 @@ export default function StatusPage() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/status", { cache: "no-store" });
+      const res = await fetch("/api/status", { cache: "no-store", credentials: "include" });
       const json = await res.json();
       setData(json);
       setLastRefresh(new Date());
@@ -134,14 +134,14 @@ export default function StatusPage() {
             {data && (
               <div
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  data.status === "healthy"
+                  data.status === "healthy" || data.status === "ok"
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : "bg-red-500/10 text-red-400 border border-red-500/20"
                 }`}
               >
-                {data.status === "healthy"
-                  ? "✓ All Systems Operational"
-                  : "⚠ System Degraded"}
+                {data.status === "healthy" || data.status === "ok"
+                  ? "All Systems Operational"
+                  : "System Degraded"}
               </div>
             )}
           </div>
@@ -166,6 +166,20 @@ export default function StatusPage() {
           </div>
         ) : (
           <>
+            {!data.checks ? (
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 text-center">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                  data.status === "ok"
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                }`}>
+                  {data.status === "ok" ? "All Systems Operational" : "System Status Unknown"}
+                </div>
+                <p className="text-xs text-zinc-600 mt-4">
+                  Detailed metrics are available to administrators only.
+                </p>
+              </div>
+            ) : (<>
             {/* Database */}
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
@@ -318,6 +332,7 @@ export default function StatusPage() {
                 Auto-refresh {autoRefresh ? "on" : "off"}
               </button>
             </div>
+            </>)}
           </>
         )}
       </div>

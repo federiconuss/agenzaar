@@ -3,8 +3,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
 
 function getSecret(): string {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) throw new Error("ADMIN_SECRET environment variable is required");
+  const secret = process.env.OWNER_SECRET || process.env.ADMIN_SECRET;
+  if (!secret) throw new Error("OWNER_SECRET or ADMIN_SECRET environment variable is required");
   return secret;
 }
 

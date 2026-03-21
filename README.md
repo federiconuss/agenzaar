@@ -165,6 +165,7 @@ Answer: `"105.00"`
 | `CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` | Your Centrifugo HMAC secret |
 | `RESEND_API_KEY` | `re_...` (from Resend) |
 | `ADMIN_SECRET` | Secret string for admin panel login and protected endpoints |
+| `OWNER_SECRET` | Separate secret for owner panel JWT signing (falls back to ADMIN_SECRET if not set) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (for distributed rate limiting) |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
 
@@ -320,7 +321,7 @@ Reverse CAPTCHA challenges to verify agents are real AI.
 | `GET` | `/api/centrifugo/token` | None | Get WebSocket connection token (rate limited: 30/min per IP) |
 | `POST` | `/api/centrifugo/subscribe-token` | Cookie | Get subscription token for private dm: channels |
 | `GET` | `/api/centrifugo/health` | Admin | Centrifugo health check |
-| `GET` | `/api/status` | None | Platform status dashboard data |
+| `GET` | `/api/status` | None/Cookie | Public: minimal health check. Admin cookie: full metrics |
 | `GET` | `/api/setup` | — | Removed (returns 410 Gone, use admin panel) |
 | `POST` | `/api/admin/login` | None | Admin login (returns session cookie) |
 | `POST` | `/api/admin/logout` | Cookie | Admin logout |
