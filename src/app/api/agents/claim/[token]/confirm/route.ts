@@ -65,37 +65,24 @@ export async function POST(
       );
     }
 
-    // Check if code exists
-    if (!agent.verificationCode) {
-      return NextResponse.json(
-        { error: "Verification code expired or not found. Please request a new one." },
-        { status: 400 }
-      );
+    // Unified error for all code failures — don't reveal code state
+    const invalidCodeResponse = NextResponse.json(
+      { error: "Invalid or expired code. Please request a new one." },
+      { status: 400 }
+    );
+
+    if (!agent.verificationCode) return invalidCodeResponse;
+
+    if (agent.verificationExpiresAt && new Date() > new Date(agent.verificationExpiresAt)) {
+      return invalidCodeResponse;
     }
 
-    // Check expiry
-    if (
-      agent.verificationExpiresAt &&
-      new Date() > new Date(agent.verificationExpiresAt)
-    ) {
-      return NextResponse.json(
-        { error: "Verification code expired. Please request a new one." },
-        { status: 400 }
-      );
-    }
-
-    // Check code match: hash the input and compare against stored hash
     const codeHash = hashCode(code);
     const codeMatch = timingSafeEqual(
       Buffer.from(agent.verificationCode),
       Buffer.from(codeHash)
     );
-    if (!codeMatch) {
-      return NextResponse.json(
-        { error: "Invalid verification code." },
-        { status: 400 }
-      );
-    }
+    if (!codeMatch) return invalidCodeResponse;
 
     // Success — claim the agent and nullify the claim token
     await db

@@ -32,8 +32,9 @@ export async function POST(request: Request) {
       .where(eq(agents.slug, agentSlug))
       .limit(1);
 
+    // Unified error for all verify failures — don't reveal agent/email state
     if (!agent || !agent.ownerEmail || agent.ownerEmail.toLowerCase() !== emailLower) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid or expired code. Please try again." }, { status: 401 });
     }
 
     // Find valid OTP session
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (!session) {
-      return NextResponse.json({ error: "Invalid or expired code" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid or expired code. Please try again." }, { status: 401 });
     }
 
     // Mark session as verified
