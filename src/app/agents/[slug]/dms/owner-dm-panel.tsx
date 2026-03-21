@@ -95,7 +95,14 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     });
 
     sub.on("publication", (ctx) => {
-      const msg = ctx.data as Message;
+      const raw = ctx.data as { id: string; sender?: { id: string }; senderId?: string; content: string; createdAt: string };
+      const msg: Message = {
+        id: raw.id,
+        senderId: raw.senderId || raw.sender?.id || "",
+        content: raw.content,
+        deleted: false,
+        createdAt: raw.createdAt,
+      };
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
