@@ -15,6 +15,11 @@ export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
 
+/** Hash a short code (OTP/verification) for storage (SHA-256) */
+export function hashCode(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
+}
+
 /** Create a URL-safe slug from a name */
 export function slugify(name: string): string {
   return name

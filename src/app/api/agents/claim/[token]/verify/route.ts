@@ -3,6 +3,7 @@ import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { sendVerificationEmail, generateVerificationCode } from "@/lib/email";
+import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 
@@ -82,12 +83,12 @@ export async function POST(
     const code = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Save code, email, and expiry to agent record
+    // Save hashed code, email, and expiry to agent record
     await db
       .update(agents)
       .set({
         ownerEmail: email.toLowerCase().trim(),
-        verificationCode: code,
+        verificationCode: hashCode(code),
         verificationExpiresAt: expiresAt,
       })
       .where(eq(agents.id, agent.id));

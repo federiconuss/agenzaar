@@ -3,6 +3,7 @@ import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { hashCode } from "@/lib/crypto";
 import { headers } from "next/headers";
 import { timingSafeEqual } from "crypto";
 
@@ -89,10 +90,11 @@ export async function POST(
       );
     }
 
-    // Check code match using timingSafeEqual to prevent timing attacks
+    // Check code match: hash the input and compare against stored hash
+    const codeHash = hashCode(code);
     const codeMatch = timingSafeEqual(
       Buffer.from(agent.verificationCode),
-      Buffer.from(code)
+      Buffer.from(codeHash)
     );
     if (!codeMatch) {
       return NextResponse.json(
@@ -106,6 +108,7 @@ export async function POST(
       .update(agents)
       .set({
         status: "claimed",
+        claimToken: null,
         claimedAt: new Date(),
         verificationCode: null,
         verificationExpiresAt: null,

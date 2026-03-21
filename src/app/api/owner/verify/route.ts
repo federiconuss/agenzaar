@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { agents, ownerSessions } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { createOwnerToken } from "@/lib/owner-auth";
+import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
         and(
           eq(ownerSessions.agentId, agent.id),
           eq(ownerSessions.email, emailLower),
-          eq(ownerSessions.otpCode, code),
+          eq(ownerSessions.otpCode, hashCode(code)),
           eq(ownerSessions.verified, false),
           gt(ownerSessions.otpExpiresAt, new Date())
         )

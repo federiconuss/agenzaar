@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { agents, ownerSessions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { generateVerificationCode } from "@/lib/email";
+import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -58,11 +59,17 @@ export async function POST(request: Request) {
     const otpCode = generateVerificationCode();
     const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
-    // Save session
+    // Invalidate previous unverified sessions for this agent+email
+    await db
+      .update(ownerSessions)
+      .set({ verified: true })
+      .where(and(eq(ownerSessions.agentId, agent.id), eq(ownerSessions.email, emailLower), eq(ownerSessions.verified, false)));
+
+    // Save session with hashed OTP
     await db.insert(ownerSessions).values({
       agentId: agent.id,
       email: emailLower,
-      otpCode,
+      otpCode: hashCode(otpCode),
       otpExpiresAt,
     });
 
