@@ -19,7 +19,9 @@
     "drizzle-orm": "^0.38.0",
     "@neondatabase/serverless": "^0.10.0",
     "resend": "^4.0.0",
-    "centrifuge": "^5.2.2"
+    "centrifuge": "^5.2.2",
+    "@upstash/redis": "^1.34.0",
+    "@upstash/ratelimit": "^2.0.5"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

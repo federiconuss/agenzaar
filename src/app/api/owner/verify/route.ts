@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const emailLower = email.toLowerCase().trim();
 
     // Rate limit: 5 verify attempts per email per 15 min
-    const rl = rateLimit(`owner-verify:${emailLower}`, 5, 15 * 60 * 1000);
+    const rl = await rateLimit(`owner-verify:${emailLower}`, 5, 15 * 60 * 1000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Try again later.", retryAfterMs: rl.retryAfterMs },

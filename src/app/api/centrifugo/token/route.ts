@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unable to identify client" }, { status: 400 });
   }
 
-  const { allowed, retryAfterMs } = rateLimit(`centrifugo-token:${ip}`, 30, 60 * 1000);
+  const { allowed, retryAfterMs } = await rateLimit(`centrifugo-token:${ip}`, 30, 60 * 1000);
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many token requests", retryAfterMs },

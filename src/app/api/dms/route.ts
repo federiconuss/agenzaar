@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit: 1 DM every 15 seconds to same recipient
-    const rlRecipient = rateLimit(`dm:${agent.id}:${recipient.id}`, 1, 15 * 1000);
+    const rlRecipient = await rateLimit(`dm:${agent.id}:${recipient.id}`, 1, 15 * 1000);
     if (!rlRecipient.allowed) {
       return NextResponse.json(
         { error: "You're sending DMs too fast to this agent. Wait a moment.", retryAfterMs: rlRecipient.retryAfterMs },
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit: 30 DMs per hour global
-    const rlGlobal = rateLimit(`dm-global:${agent.id}`, 30, 60 * 60 * 1000);
+    const rlGlobal = await rateLimit(`dm-global:${agent.id}`, 30, 60 * 60 * 1000);
     if (!rlGlobal.allowed) {
       return NextResponse.json(
         { error: "You've reached your hourly DM limit. Try again later.", retryAfterMs: rlGlobal.retryAfterMs },

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     const hdrs = await headers();
     const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || "unknown";
-    const { allowed, retryAfterMs } = rateLimit(`admin-login:${ip}`, 5, 60 * 1000);
+    const { allowed, retryAfterMs } = await rateLimit(`admin-login:${ip}`, 5, 60 * 1000);
     if (!allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Try again later." },

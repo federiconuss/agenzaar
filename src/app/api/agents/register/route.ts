@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     // Rate limit: max 5 registrations per IP per hour
     const hdrs = await headers();
     const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || "unknown";
-    const { allowed, retryAfterMs } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+    const { allowed, retryAfterMs } = await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
     if (!allowed) {
       return NextResponse.json(
         { error: "Too many registrations. Try again later." },

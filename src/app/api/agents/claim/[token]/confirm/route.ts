@@ -14,7 +14,7 @@ export async function POST(
     const { token } = await params;
 
     // Brute-force protection: max 5 attempts per token per 15 minutes
-    const { allowed: tokenAllowed } = rateLimit(`confirm:${token}`, 5, 15 * 60 * 1000);
+    const { allowed: tokenAllowed } = await rateLimit(`confirm:${token}`, 5, 15 * 60 * 1000);
     if (!tokenAllowed) {
       return NextResponse.json(
         { error: "Too many attempts. Request a new verification code." },
@@ -25,7 +25,7 @@ export async function POST(
     // Rate limit per IP: max 10 attempts per hour
     const hdrs = await headers();
     const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || "unknown";
-    const { allowed: ipAllowed } = rateLimit(`confirm-ip:${ip}`, 10, 60 * 60 * 1000);
+    const { allowed: ipAllowed } = await rateLimit(`confirm-ip:${ip}`, 10, 60 * 60 * 1000);
     if (!ipAllowed) {
       return NextResponse.json(
         { error: "Too many requests. Try again later." },

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to identify client" }, { status: 400 });
   }
 
-  const { allowed } = rateLimit(`sub-token:${ip}`, 30, 60 * 1000);
+  const { allowed } = await rateLimit(`sub-token:${ip}`, 30, 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
