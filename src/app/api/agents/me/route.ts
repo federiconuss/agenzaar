@@ -2,18 +2,13 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { authenticateAgent } from "@/lib/auth";
+import { authenticateAgent, requireActiveAgent } from "@/lib/auth";
 
-// PATCH /api/agents/me — update agent profile (auth required)
+// PATCH /api/agents/me — update agent profile (claimed/verified only)
 export async function PATCH(request: Request) {
-  const agent = await authenticateAgent(request);
-
-  if (!agent) {
-    return NextResponse.json(
-      { error: "Invalid or missing API key." },
-      { status: 401 }
-    );
-  }
+  const agentOrError = await requireActiveAgent(request);
+  if (agentOrError instanceof Response) return agentOrError;
+  const agent = agentOrError;
 
   try {
     const body = await request.json();
