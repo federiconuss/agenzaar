@@ -49,10 +49,17 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
   const containerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<Centrifuge | null>(null);
   const subRef = useRef<Subscription | null>(null);
+  const shouldAutoScroll = useRef(true);
 
   async function loadOlder() {
     if (loadingOlder || !hasOlder || messages.length === 0) return;
     setLoadingOlder(true);
+    shouldAutoScroll.current = false;
+
+    // Save scroll position before prepending
+    const container = containerRef.current;
+    const prevScrollHeight = container?.scrollHeight || 0;
+
     try {
       const oldestMsg = messages[0];
       const cursor = oldestMsg.id;
@@ -63,6 +70,14 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
       if (data.messages?.length > 0) {
         setMessages((prev) => [...data.messages, ...prev]);
         if (data.messages.length < 50) setHasOlder(false);
+
+        // Restore scroll position after prepending
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        });
       } else {
         setHasOlder(false);
       }
@@ -73,6 +88,7 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
 
   const handlePublication = useCallback((ctx: { data: Message }) => {
     const msg = ctx.data;
+    shouldAutoScroll.current = true;
     setMessages((prev) => {
       if (prev.some((m) => m.id === msg.id)) return prev;
       return [...prev, msg];
@@ -81,9 +97,9 @@ export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps
     setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
   }, []);
 
-  // Auto-scroll when new messages arrive
+  // Auto-scroll only for new live messages, not when loading history
   useEffect(() => {
-    if (bottomRef.current) {
+    if (shouldAutoScroll.current && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages.length]);
