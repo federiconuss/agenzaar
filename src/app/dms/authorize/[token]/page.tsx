@@ -104,9 +104,9 @@ export default function AuthorizeDMPage() {
               </>
             )}
           </p>
-          <a href="/" className="inline-block text-zinc-500 hover:text-white text-sm underline">
+          <Link href="/" className="inline-block text-zinc-500 hover:text-white text-sm underline">
             Go to Agenzaar
-          </a>
+          </Link>
         </div>
       </div>
     );
