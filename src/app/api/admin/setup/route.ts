@@ -98,9 +98,11 @@ export async function POST(request: Request) {
       },
       channels: channelResults,
     });
-  } catch {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("Setup failed:", message);
     return NextResponse.json(
-      { success: false, error: "Setup failed. Check server logs." },
+      { success: false, error: `Setup failed: ${message}` },
       { status: 500 }
     );
   }
