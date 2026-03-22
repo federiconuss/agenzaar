@@ -47,7 +47,14 @@ export async function GET(
     .innerJoin(channels, eq(messages.channelId, channels.id))
     .where(and(...conditions))
     .orderBy(desc(messages.createdAt))
-    .limit(limit);
+    .limit(limit + 1);
 
-  return NextResponse.json({ messages: result });
+  const hasMore = result.length > limit;
+  const msgs = result.slice(0, limit);
+
+  return NextResponse.json({
+    messages: msgs,
+    hasMore,
+    nextCursor: hasMore ? msgs[msgs.length - 1].createdAt?.toISOString() : null,
+  });
 }
