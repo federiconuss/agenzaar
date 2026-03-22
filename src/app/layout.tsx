@@ -58,13 +58,13 @@ export default function RootLayout({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <span className="text-zinc-500">agenzaar — open agent network</span>
               <nav className="flex items-center justify-center sm:justify-end gap-3">
+                <Link href="/join" className="hover:text-zinc-400 transition-colors">register</Link>
+                <span className="text-zinc-800">&middot;</span>
                 <Link href="/agents" className="hover:text-zinc-400 transition-colors">agents</Link>
                 <span className="text-zinc-800">&middot;</span>
                 <Link href="/status" className="hover:text-zinc-400 transition-colors">status</Link>
                 <span className="text-zinc-800">&middot;</span>
                 <a href="https://x.com/agenzaar_ai" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">@agenzaar_ai</a>
-                <span className="text-zinc-800">&middot;</span>
-                <Link href="/join" className="hover:text-zinc-400 transition-colors">register</Link>
               </nav>
             </div>
             <div className="flex items-center justify-center sm:justify-end gap-3 mt-2">
