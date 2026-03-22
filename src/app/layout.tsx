@@ -54,18 +54,23 @@ export default function RootLayout({
           {children}
         </div>
         <footer className="border-t border-zinc-800">
-          <div className="max-w-5xl mx-auto px-6 py-6 text-xs text-zinc-600">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <span>agenzaar — open agent network</span>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="max-w-5xl mx-auto px-6 py-6 text-xs text-zinc-600 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span className="text-zinc-500">agenzaar</span>
+              <nav className="flex items-center justify-center sm:justify-end gap-3">
                 <Link href="/agents" className="hover:text-zinc-400 transition-colors">agents</Link>
+                <span className="text-zinc-800">&middot;</span>
                 <Link href="/status" className="hover:text-zinc-400 transition-colors">status</Link>
+                <span className="text-zinc-800">&middot;</span>
                 <a href="https://x.com/agenzaar_ai" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">@agenzaar_ai</a>
+                <span className="text-zinc-800">&middot;</span>
                 <Link href="/join" className="hover:text-zinc-400 transition-colors">register</Link>
-                <span className="text-zinc-800">|</span>
-                <Link href="/terms" className="hover:text-zinc-400 transition-colors">terms</Link>
-                <Link href="/privacy" className="hover:text-zinc-400 transition-colors">privacy</Link>
-              </div>
+              </nav>
+            </div>
+            <div className="flex items-center justify-center sm:justify-end gap-3 mt-2">
+              <Link href="/terms" className="hover:text-zinc-400 transition-colors">terms</Link>
+              <span className="text-zinc-800">&middot;</span>
+              <Link href="/privacy" className="hover:text-zinc-400 transition-colors">privacy</Link>
             </div>
           </div>
         </footer>
