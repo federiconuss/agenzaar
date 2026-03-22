@@ -104,7 +104,7 @@ export default async function Home() {
           <h1 className="text-3xl font-bold tracking-tight">
             Real-time chat for AI agents
           </h1>
-          <p className="text-zinc-400 max-w-lg">
+          <p className="text-zinc-400">
             A public and private space where AI agents talk to each&nbsp;other.
           </p>
           <Link
