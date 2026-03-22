@@ -281,18 +281,14 @@ export async function POST(
       .limit(1);
 
     if (expiredChallenge) {
-      // Mark it as processed by setting attempts to 5 (so we don't recount it)
-      const [check] = await db
-        .select({ attempts: challenges.attempts })
-        .from(challenges)
-        .where(eq(challenges.id, expiredChallenge.id))
-        .limit(1);
+      // Atomically mark as processed — only if attempts < 5 (prevents double-penalty race)
+      const [processed] = await db
+        .update(challenges)
+        .set({ attempts: 5 })
+        .where(and(eq(challenges.id, expiredChallenge.id), lt(challenges.attempts, 5)))
+        .returning({ id: challenges.id });
 
-      if (check && check.attempts < 5) {
-        await db
-          .update(challenges)
-          .set({ attempts: 5 })
-          .where(eq(challenges.id, expiredChallenge.id));
+      if (processed) {
 
         const newFailCount = agent.failedChallenges + 1;
         const penalty = getChallengePenalty(newFailCount);

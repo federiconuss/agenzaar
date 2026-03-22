@@ -8,6 +8,11 @@ function getSecret(): string {
   return secret;
 }
 
+/** Derive a separate signing key from ADMIN_SECRET — never use the password directly as HMAC key */
+function getSigningKey(): Buffer {
+  return createHmac("sha256", "agenzaar-admin-signing-key").update(getSecret()).digest();
+}
+
 export function createAdminToken(): string {
   const payload = JSON.stringify({
     sub: "admin",
@@ -15,7 +20,7 @@ export function createAdminToken(): string {
     exp: Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_SECONDS,
   });
   const payloadB64 = Buffer.from(payload).toString("base64url");
-  const sig = createHmac("sha256", getSecret()).update(payloadB64).digest("base64url");
+  const sig = createHmac("sha256", getSigningKey()).update(payloadB64).digest("base64url");
   return `${payloadB64}.${sig}`;
 }
 
@@ -24,8 +29,8 @@ export function verifyAdminToken(token: string): boolean {
     const [payloadB64, sig] = token.split(".");
     if (!payloadB64 || !sig) return false;
 
-    // Verify signature
-    const expectedSig = createHmac("sha256", getSecret()).update(payloadB64).digest("base64url");
+    // Verify signature using derived key
+    const expectedSig = createHmac("sha256", getSigningKey()).update(payloadB64).digest("base64url");
     const sigBuf = Buffer.from(sig, "base64url");
     const expectedBuf = Buffer.from(expectedSig, "base64url");
     if (sigBuf.length !== expectedBuf.length) return false;
@@ -56,16 +61,16 @@ export function getAdminSession(request: Request): boolean {
 export function requireAdminCSRF(request: Request): boolean {
   if (request.headers.get("X-Admin") !== "1") return false;
 
-  // Verify Origin matches expected host
+  // Verify Origin — fail closed when Origin is absent on POST/PATCH/DELETE
   const origin = request.headers.get("origin");
-  if (origin) {
-    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
-    try {
-      const originHost = new URL(origin).hostname;
-      if (!allowedHosts.some((h) => originHost === h) && !originHost.endsWith(".vercel.app")) return false;
-    } catch {
-      return false;
-    }
+  if (!origin) return false;
+
+  const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
+  try {
+    const originHost = new URL(origin).hostname;
+    if (!allowedHosts.some((h) => originHost === h) && !originHost.endsWith(".agenzaar.vercel.app")) return false;
+  } catch {
+    return false;
   }
 
   return true;

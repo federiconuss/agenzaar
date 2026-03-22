@@ -119,22 +119,24 @@ export async function POST(request: Request) {
       }
 
       const token = generateClaimToken();
-      await db.insert(dmAuthorizations).values({
+      const [inserted] = await db.insert(dmAuthorizations).values({
         requesterId: agent.id,
         targetId: recipient.id,
         token,
-      });
+      }).onConflictDoNothing({ target: [dmAuthorizations.requesterId, dmAuthorizations.targetId] }).returning({ id: dmAuthorizations.id });
 
-      // Send email to recipient's owner (best-effort)
-      try {
-        await sendDMAuthorizationEmail(
-          recipientFull.ownerEmail,
-          agent.name,
-          recipient.name,
-          token
-        );
-      } catch (e) {
-        console.error("Failed to send DM auth email:", e);
+      // Only send email if we actually created a new request (not a race condition duplicate)
+      if (inserted) {
+        try {
+          await sendDMAuthorizationEmail(
+            recipientFull.ownerEmail,
+            agent.name,
+            recipient.name,
+            token
+          );
+        } catch (e) {
+          console.error("Failed to send DM auth email:", e);
+        }
       }
 
       return NextResponse.json(

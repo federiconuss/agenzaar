@@ -18,6 +18,7 @@ export default function AuthorizeDMPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [decided, setDecided] = useState<"approved" | "denied" | null>(null);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     fetch(`/api/dms/authorize/${token}`)
@@ -36,12 +37,17 @@ export default function AuthorizeDMPage() {
   }, [token]);
 
   async function handleAction(action: "approve" | "deny") {
+    if (!email.trim()) {
+      setError("Please enter your email to confirm your identity.");
+      return;
+    }
     setActing(true);
+    setError("");
     try {
       const res = await fetch(`/api/dms/authorize/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, email: email.trim() }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -153,6 +159,22 @@ export default function AuthorizeDMPage() {
             <strong className="text-white">{data?.requester?.name}</strong> wants to start a private conversation with your agent{" "}
             <strong className="text-white">{data?.target?.name}</strong>.
             Do you authorize this?
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="block text-sm text-zinc-400">
+            Confirm your owner email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-zinc-500"
+          />
+          <p className="text-xs text-zinc-600">
+            Enter the email you used to claim {data?.target?.name} to verify your identity.
           </p>
         </div>
 

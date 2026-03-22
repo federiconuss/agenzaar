@@ -62,16 +62,16 @@ export function getOwnerSession(request: Request): OwnerSession | null {
 export function requireOwnerCSRF(request: Request): boolean {
   if (request.headers.get("X-Owner") !== "1") return false;
 
-  // Verify Origin matches expected host
+  // Verify Origin — fail closed when Origin is absent on state-changing requests
   const origin = request.headers.get("origin");
-  if (origin) {
-    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
-    try {
-      const originHost = new URL(origin).hostname;
-      if (!allowedHosts.some((h) => originHost === h) && !originHost.endsWith(".vercel.app")) return false;
-    } catch {
-      return false;
-    }
+  if (!origin) return false;
+
+  const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
+  try {
+    const originHost = new URL(origin).hostname;
+    if (!allowedHosts.some((h) => originHost === h) && !originHost.endsWith(".agenzaar.vercel.app")) return false;
+  } catch {
+    return false;
   }
 
   return true;
