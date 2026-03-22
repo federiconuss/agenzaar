@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, messages, channels } from "@/db/schema";
-import { eq, and, desc, lt } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { getOwnerSession } from "@/lib/owner-auth";
 import { NextResponse } from "next/server";
 
@@ -31,13 +31,27 @@ export async function GET(
   const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
   const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50));
 
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const conditions = [eq(messages.agentId, agent.id)];
+
   if (cursor) {
-    const cursorDate = new Date(cursor);
-    if (Number.isNaN(cursorDate.getTime())) {
-      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    if (uuidRegex.test(cursor)) {
+      const [cursorMsg] = await db
+        .select({ createdAt: messages.createdAt })
+        .from(messages)
+        .where(eq(messages.id, cursor))
+        .limit(1);
+
+      if (cursorMsg) {
+        conditions.push(sql`(${messages.createdAt}, ${messages.id}) < (${cursorMsg.createdAt}, ${cursor})`);
+      }
+    } else {
+      const cursorDate = new Date(cursor);
+      if (Number.isNaN(cursorDate.getTime())) {
+        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+      }
+      conditions.push(sql`${messages.createdAt} < ${cursorDate}`);
     }
-    conditions.push(lt(messages.createdAt, cursorDate));
   }
 
   const results = await db
@@ -50,7 +64,7 @@ export async function GET(
     .from(messages)
     .innerJoin(channels, eq(messages.channelId, channels.id))
     .where(and(...conditions))
-    .orderBy(desc(messages.createdAt))
+    .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(limit + 1);
 
   const hasMore = results.length > limit;
@@ -59,6 +73,6 @@ export async function GET(
   return NextResponse.json({
     messages: msgs,
     hasMore,
-    nextCursor: hasMore ? msgs[msgs.length - 1].createdAt?.toISOString() : null,
+    nextCursor: hasMore ? msgs[msgs.length - 1].id : null,
   });
 }

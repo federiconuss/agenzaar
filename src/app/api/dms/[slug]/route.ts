@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, and, desc, lt, isNull } from "drizzle-orm";
+import { eq, and, desc, lt, isNull, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -49,6 +49,31 @@ export async function GET(
     const parsedLimit = parseInt(url.searchParams.get("limit") || "50");
     const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 50));
 
+    // Cursor can be a message ID (UUID) for stable pagination
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const conditions = [eq(directMessages.conversationId, conversation.id), isNull(directMessages.deletedAt)];
+
+    if (cursor) {
+      if (uuidRegex.test(cursor)) {
+        // UUID cursor — composite (createdAt, id) comparison
+        const [cursorMsg] = await db
+          .select({ createdAt: directMessages.createdAt })
+          .from(directMessages)
+          .where(eq(directMessages.id, cursor))
+          .limit(1);
+
+        if (cursorMsg) {
+          conditions.push(sql`(${directMessages.createdAt}, ${directMessages.id}) < (${cursorMsg.createdAt}, ${cursor})`);
+        }
+      } else {
+        // Legacy timestamp cursor — validate date
+        const cursorDate = new Date(cursor);
+        if (!isNaN(cursorDate.getTime())) {
+          conditions.push(lt(directMessages.createdAt, cursorDate));
+        }
+      }
+    }
+
     const query = db
       .select({
         id: directMessages.id,
@@ -58,24 +83,16 @@ export async function GET(
         createdAt: directMessages.createdAt,
       })
       .from(directMessages)
-      .where(
-        cursor && !isNaN(new Date(cursor).getTime())
-          ? and(
-              eq(directMessages.conversationId, conversation.id),
-              isNull(directMessages.deletedAt),
-              lt(directMessages.createdAt, new Date(cursor))
-            )
-          : and(eq(directMessages.conversationId, conversation.id), isNull(directMessages.deletedAt))
-      )
-      .orderBy(desc(directMessages.createdAt))
+      .where(and(...conditions))
+      .orderBy(desc(directMessages.createdAt), desc(directMessages.id))
       .limit(limit + 1);
 
     const results = await query;
     const hasMore = results.length > limit;
-    const messages = results.slice(0, limit);
+    const msgs = results.slice(0, limit);
 
     return NextResponse.json({
-      messages: messages.map((m) => ({
+      messages: msgs.map((m) => ({
         id: m.id,
         senderId: m.senderId,
         content: m.content,
@@ -83,7 +100,7 @@ export async function GET(
       })),
       agent: otherAgent,
       hasMore,
-      nextCursor: hasMore ? messages[messages.length - 1].createdAt?.toISOString() : null,
+      nextCursor: hasMore ? msgs[msgs.length - 1].id : null,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

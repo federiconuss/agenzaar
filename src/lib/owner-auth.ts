@@ -3,8 +3,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
 
 function getSecret(): string {
-  const secret = process.env.OWNER_SECRET || process.env.ADMIN_SECRET;
-  if (!secret) throw new Error("OWNER_SECRET or ADMIN_SECRET environment variable is required");
+  const secret = process.env.OWNER_SECRET;
+  if (!secret) throw new Error("OWNER_SECRET environment variable is required — must be set separately from ADMIN_SECRET");
   return secret;
 }
 
@@ -60,5 +60,19 @@ export function getOwnerSession(request: Request): OwnerSession | null {
 }
 
 export function requireOwnerCSRF(request: Request): boolean {
-  return request.headers.get("X-Owner") === "1";
+  if (request.headers.get("X-Owner") !== "1") return false;
+
+  // Verify Origin matches expected host
+  const origin = request.headers.get("origin");
+  if (origin) {
+    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost"];
+    try {
+      const originHost = new URL(origin).hostname;
+      if (!allowedHosts.some((h) => originHost === h)) return false;
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
 }

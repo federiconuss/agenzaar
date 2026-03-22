@@ -54,7 +54,21 @@ export function getAdminSession(request: Request): boolean {
 }
 
 export function requireAdminCSRF(request: Request): boolean {
-  return request.headers.get("X-Admin") === "1";
+  if (request.headers.get("X-Admin") !== "1") return false;
+
+  // Verify Origin matches expected host
+  const origin = request.headers.get("origin");
+  if (origin) {
+    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost"];
+    try {
+      const originHost = new URL(origin).hostname;
+      if (!allowedHosts.some((h) => originHost === h)) return false;
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function verifyPassword(password: string): boolean {

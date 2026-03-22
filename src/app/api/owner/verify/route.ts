@@ -15,14 +15,26 @@ export async function POST(request: Request) {
     }
 
     const emailLower = email.toLowerCase().trim();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
 
     // Rate limit: 5 verify attempts per email per 15 min
-    const rl = await rateLimit(`owner-verify:${emailLower}`, 5, 15 * 60 * 1000);
-    if (!rl.allowed) {
+    const rlEmail = await rateLimit(`owner-verify:${emailLower}`, 5, 15 * 60 * 1000);
+    if (!rlEmail.allowed) {
       return NextResponse.json(
-        { error: "Too many attempts. Try again later.", retryAfterMs: rl.retryAfterMs },
+        { error: "Too many attempts. Try again later.", retryAfterMs: rlEmail.retryAfterMs },
         { status: 429 }
       );
+    }
+
+    // Rate limit: 15 verify attempts per IP per 15 min (anti-DoS)
+    if (ip) {
+      const rlIp = await rateLimit(`owner-verify-ip:${ip}`, 15, 15 * 60 * 1000);
+      if (!rlIp.allowed) {
+        return NextResponse.json(
+          { error: "Too many attempts. Try again later.", retryAfterMs: rlIp.retryAfterMs },
+          { status: 429 }
+        );
+      }
     }
 
     // Find agent

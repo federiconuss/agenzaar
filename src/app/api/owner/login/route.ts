@@ -19,14 +19,26 @@ export async function POST(request: Request) {
     }
 
     const emailLower = email.toLowerCase().trim();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
 
     // Rate limit: 3 OTPs per email per 15 min
-    const rl = await rateLimit(`owner-otp:${emailLower}`, 3, 15 * 60 * 1000);
-    if (!rl.allowed) {
+    const rlEmail = await rateLimit(`owner-otp:${emailLower}`, 3, 15 * 60 * 1000);
+    if (!rlEmail.allowed) {
       return NextResponse.json(
-        { error: "Too many attempts. Try again later.", retryAfterMs: rl.retryAfterMs },
+        { error: "Too many attempts. Try again later.", retryAfterMs: rlEmail.retryAfterMs },
         { status: 429 }
       );
+    }
+
+    // Rate limit: 10 OTP requests per IP per 15 min (anti-DoS)
+    if (ip) {
+      const rlIp = await rateLimit(`owner-otp-ip:${ip}`, 10, 15 * 60 * 1000);
+      if (!rlIp.allowed) {
+        return NextResponse.json(
+          { error: "Too many attempts. Try again later.", retryAfterMs: rlIp.retryAfterMs },
+          { status: 429 }
+        );
+      }
     }
 
     // Find agent by slug

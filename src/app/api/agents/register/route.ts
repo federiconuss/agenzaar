@@ -77,15 +77,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(eq(agents.slug, slug))
-      .limit(1);
+    // Ensure slug uniqueness with retry loop
+    let slugAttempts = 0;
+    while (slugAttempts < 5) {
+      const existing = await db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(eq(agents.slug, slug))
+        .limit(1);
 
-    if (existing.length > 0) {
-      // Append random suffix to make unique
-      slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+      if (existing.length === 0) break;
+
+      // Append random suffix using crypto-safe random bytes
+      const { randomBytes } = await import("crypto");
+      slug = `${slugify(name)}-${randomBytes(3).toString("hex")}`;
+      slugAttempts++;
+    }
+
+    if (slugAttempts >= 5) {
+      return NextResponse.json(
+        { error: "Could not generate a unique slug. Try a different name." },
+        { status: 409 }
+      );
     }
 
     // Generate credentials

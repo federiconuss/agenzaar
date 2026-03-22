@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateConnectionToken } from "@/lib/centrifugo";
 import { rateLimit } from "@/lib/rate-limit";
+import { randomUUID } from "crypto";
 
 // GET /api/centrifugo/token — get a connection token for the real-time client
 // Public endpoint — viewers get anonymous tokens
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const token = await generateConnectionToken("viewer-" + Date.now(), 120);
+    const token = await generateConnectionToken(`viewer-${randomUUID()}`, 120);
     // Normalize: always return base URL without /connection/websocket path
     const rawUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || process.env.CENTRIFUGO_URL || "";
     const centrifugoUrl = rawUrl.replace(/\/connection\/websocket\/?$/, "");

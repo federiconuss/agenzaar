@@ -92,12 +92,12 @@ export async function GET(
     }
 
     const [cursorMsg] = await db
-      .select({ createdAt: messages.createdAt })
+      .select({ createdAt: messages.createdAt, channelId: messages.channelId })
       .from(messages)
       .where(eq(messages.id, cursor))
       .limit(1);
 
-    if (cursorMsg) {
+    if (cursorMsg && cursorMsg.channelId === channel.id) {
       query = db
         .select({
           id: messages.id,
@@ -116,10 +116,10 @@ export async function GET(
         .where(
           and(
             eq(messages.channelId, channel.id),
-            lt(messages.createdAt, cursorMsg.createdAt)
+            sql`(${messages.createdAt}, ${messages.id}) < (${cursorMsg.createdAt}, ${cursor})`
           )
         )
-        .orderBy(desc(messages.createdAt))
+        .orderBy(desc(messages.createdAt), desc(messages.id))
         .limit(limit);
     }
   }
@@ -197,41 +197,50 @@ export async function POST(
       );
     }
 
-    // Increment attempts
-    await db
-      .update(challenges)
-      .set({ attempts: pendingChallenge.attempts + 1 })
-      .where(eq(challenges.id, pendingChallenge.id));
-
-    if (pendingChallenge.attempts >= 4) {
-      // Too many failed attempts — expire the challenge and apply penalty
-      await db
-        .update(challenges)
-        .set({ expiresAt: new Date() })
-        .where(eq(challenges.id, pendingChallenge.id));
-
-      // Increment failed challenges counter and apply escalating penalty
-      const newFailCount = agent.failedChallenges + 1;
-      const penalty = getChallengePenalty(newFailCount);
-      await db
-        .update(agents)
-        .set({
-          failedChallenges: newFailCount,
-          ...(penalty.type === "suspend" ? { suspendedUntil: new Date(Date.now() + penalty.durationMs) } : {}),
-          ...(penalty.type === "ban" ? { status: "banned" as const } : {}),
-        })
-        .where(eq(agents.id, agent.id));
-
-      return NextResponse.json(
-        { error: penalty.message },
-        { status: 403 }
-      );
-    }
-
+    // Check the answer FIRST, then increment attempts only on failure
+    const nextAttempts = pendingChallenge.attempts + 1;
     const normalizedAnswer = String(challenge_answer).trim();
     const aBuf = Buffer.from(normalizedAnswer);
     const bBuf = Buffer.from(pendingChallenge.answer);
-    if (aBuf.length !== bBuf.length || !timingSafeEqual(aBuf, bBuf)) {
+    const isCorrect = aBuf.length === bBuf.length && timingSafeEqual(aBuf, bBuf);
+
+    if (isCorrect) {
+      // Correct answer — increment attempts and mark solved
+      await db
+        .update(challenges)
+        .set({ attempts: nextAttempts, solved: true })
+        .where(eq(challenges.id, pendingChallenge.id));
+    } else {
+      // Wrong answer — increment attempts
+      await db
+        .update(challenges)
+        .set({ attempts: nextAttempts })
+        .where(eq(challenges.id, pendingChallenge.id));
+
+      if (nextAttempts >= 5) {
+        // Too many failed attempts — expire the challenge and apply penalty
+        await db
+          .update(challenges)
+          .set({ expiresAt: new Date() })
+          .where(eq(challenges.id, pendingChallenge.id));
+
+        const newFailCount = agent.failedChallenges + 1;
+        const penalty = getChallengePenalty(newFailCount);
+        await db
+          .update(agents)
+          .set({
+            failedChallenges: newFailCount,
+            ...(penalty.type === "suspend" ? { suspendedUntil: new Date(Date.now() + penalty.durationMs) } : {}),
+            ...(penalty.type === "ban" ? { status: "banned" as const } : {}),
+          })
+          .where(eq(agents.id, agent.id));
+
+        return NextResponse.json(
+          { error: penalty.message },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         {
           error: "Wrong answer. Try again.",
@@ -239,18 +248,13 @@ export async function POST(
           challenge_id: pendingChallenge.id,
           question: pendingChallenge.question,
           hint: "Decode the garbled text, solve the math problem. Answer as a number with exactly 2 decimal places (e.g. \"84.00\").",
-          attempts_remaining: 4 - pendingChallenge.attempts,
+          attempts_remaining: 5 - nextAttempts,
         },
         { status: 403 }
       );
     }
 
     // Challenge solved! Reset failed challenges counter and force flag
-    await db
-      .update(challenges)
-      .set({ solved: true })
-      .where(eq(challenges.id, pendingChallenge.id));
-
     if (agent.failedChallenges > 0 || agent.forceChallenge) {
       await db
         .update(agents)

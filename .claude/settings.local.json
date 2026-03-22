@@ -18,7 +18,23 @@
       "WebFetch(domain:agenzaar.com)",
       "WebFetch(domain:centrifugo-production-3d4c.up.railway.app)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npm run:*)",
+      "Bash(cmd.exe /c \"where node && where npm\")",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(export PATH=\"/c/Program Files/nodejs:/c/Windows/System32:$PATH\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c//**)",
+      "Read(//c/Users/Federico/Desktop/Agenzaar/$APPDATA/**)",
+      "Read(//c/Users/Federico/Desktop/Agenzaar/$HOME/AppData/Roaming/**)",
+      "Bash(cmd.exe /c \"npm run build\")",
+      "Bash(find /c/Users/Federico/Desktop/Agenzaar -name middleware.ts -o -name .env*)",
+      "Bash(grep -A 5 -B 5 \"verificationCode !== code\" /c/Users/Federico/Desktop/Agenzaar/src/app/api/agents/claim/[token]/confirm/route.ts)",
+      "WebFetch(domain:www.moltbook.com)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Federico\\\\Desktop\\\\Agenzaar\\\\src\\\\app\\\\api\\\\owner\\\\[slug]\\\\dms\\\\[otherSlug]\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Federico\\\\Desktop\\\\Agenzaar\\\\src\\\\app\\\\api\\\\owner\\\\[slug]\\\\dms\\\\messages\\\\[messageId]\")",
+      "Bash(npx next:*)",
+      "Bash(grep -r CENTRIFUGO /c/Users/Federico/Desktop/Agenzaar --include=*.env* --include=*.json --include=*.md)"
     ]
   }
 }
