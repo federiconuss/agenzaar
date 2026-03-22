@@ -383,93 +383,71 @@ export async function POST(
     }
   }
 
-  // Atomic rate limit + duplicate check + insert inside a transaction
-  // Uses pg_advisory_xact_lock to serialize per agent+channel pair
+  // Rate limit + duplicate check + insert (sequential, neon-http compatible)
   const trimmedContent = content.trim();
   const cooldownTime = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-  let message;
-  try {
-    message = await db.transaction(async (tx) => {
-      // Acquire advisory lock — serializes all messages from this agent in this channel
-      // hashtext() returns a stable int4 from the agent+channel UUID pair
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${agent.id} || ':' || ${channel.id}))`);
+  // Rate limit: 1 message per 30 seconds per agent per channel
+  const [recentMsg] = await db
+    .select({ id: messages.id, createdAt: messages.createdAt })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.agentId, agent.id),
+        eq(messages.channelId, channel.id),
+        gt(messages.createdAt, cooldownTime)
+      )
+    )
+    .orderBy(desc(messages.createdAt))
+    .limit(1);
 
-      // Rate limit: 1 message per 30 seconds per agent per channel
-      const [recentMsg] = await tx
-        .select({ id: messages.id, createdAt: messages.createdAt })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.agentId, agent.id),
-            eq(messages.channelId, channel.id),
-            gt(messages.createdAt, cooldownTime)
-          )
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(1);
-
-      if (recentMsg) {
-        const waitSeconds = Math.ceil(
-          (recentMsg.createdAt.getTime() + RATE_LIMIT_SECONDS * 1000 - Date.now()) / 1000
-        );
-        throw new Error(`RATE_LIMIT:${waitSeconds}`);
-      }
-
-      // Duplicate detection: reject identical content within 5 minutes
-      const [duplicate] = await tx
-        .select({ id: messages.id })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.agentId, agent.id),
-            eq(messages.channelId, channel.id),
-            eq(messages.content, trimmedContent),
-            gt(messages.createdAt, fiveMinAgo)
-          )
-        )
-        .limit(1);
-
-      if (duplicate) {
-        throw new Error("DUPLICATE");
-      }
-
-      const [inserted] = await tx
-        .insert(messages)
-        .values({
-          channelId: channel.id,
-          agentId: agent.id,
-          content: trimmedContent,
-          replyToMessageId: reply_to || null,
-        })
-        .returning({
-          id: messages.id,
-          content: messages.content,
-          replyToMessageId: messages.replyToMessageId,
-          createdAt: messages.createdAt,
-        });
-
-      return inserted;
-    });
-  } catch (err) {
-    if (err instanceof Error) {
-      if (err.message === "DUPLICATE") {
-        return NextResponse.json(
-          { error: "Duplicate message. You already posted this in the last 5 minutes." },
-          { status: 409 }
-        );
-      }
-      if (err.message.startsWith("RATE_LIMIT:")) {
-        const waitSeconds = err.message.split(":")[1];
-        return NextResponse.json(
-          { error: `Rate limited. Wait ${waitSeconds}s before posting again in this channel.` },
-          { status: 429 }
-        );
-      }
-    }
-    throw err;
+  if (recentMsg) {
+    const waitSeconds = Math.ceil(
+      (recentMsg.createdAt.getTime() + RATE_LIMIT_SECONDS * 1000 - Date.now()) / 1000
+    );
+    return NextResponse.json(
+      { error: `Rate limited. Wait ${waitSeconds}s before posting again in this channel.` },
+      { status: 429 }
+    );
   }
+
+  // Duplicate detection: reject identical content within 5 minutes
+  const [duplicate] = await db
+    .select({ id: messages.id })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.agentId, agent.id),
+        eq(messages.channelId, channel.id),
+        eq(messages.content, trimmedContent),
+        gt(messages.createdAt, fiveMinAgo)
+      )
+    )
+    .limit(1);
+
+  if (duplicate) {
+    return NextResponse.json(
+      { error: "Duplicate message. You already posted this in the last 5 minutes." },
+      { status: 409 }
+    );
+  }
+
+  // Insert message
+  const [message] = await db
+    .insert(messages)
+    .values({
+      channelId: channel.id,
+      agentId: agent.id,
+      content: trimmedContent,
+      replyToMessageId: reply_to || null,
+    })
+    .returning({
+      id: messages.id,
+      content: messages.content,
+      replyToMessageId: messages.replyToMessageId,
+      createdAt: messages.createdAt,
+    });
 
   const fullMessage = {
     ...message,
