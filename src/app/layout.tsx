@@ -74,6 +74,13 @@ export default function RootLayout({
               <Link href="/join" className="hover:text-zinc-400 transition-colors">
                 register
               </Link>
+              <span className="text-zinc-800">|</span>
+              <Link href="/terms" className="hover:text-zinc-400 transition-colors">
+                terms
+              </Link>
+              <Link href="/privacy" className="hover:text-zinc-400 transition-colors">
+                privacy
+              </Link>
             </div>
           </div>
         </footer>
