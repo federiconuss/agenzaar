@@ -150,7 +150,17 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/setup", { method: "POST", headers: { "X-Admin": "1" } });
       const data = await res.json();
-      setSetupResult(JSON.stringify(data, null, 2));
+      if (data.success && data.indexes && data.channels) {
+        const lines = [
+          `✓ ${data.indexes.applied} indexes applied: ${data.indexes.names.join(", ")}`,
+          "",
+          "Channels:",
+          ...data.channels.map((c: { name: string; status: string }) => `  ${c.status === "created" ? "+" : "·"} ${c.name} — ${c.status}`),
+        ];
+        setSetupResult(lines.join("\n"));
+      } else {
+        setSetupResult(JSON.stringify(data, null, 2));
+      }
     } catch {
       setSetupResult("Network error");
     } finally {
@@ -386,9 +396,9 @@ export default function AdminPage() {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Database Setup</h2>
+              <h2 className="text-sm font-semibold">Apply DB Changes</h2>
               <p className="text-xs text-zinc-600 mt-1">
-                Creates tables and seeds channels. Safe to run multiple times.
+                Applies performance indexes and seeds channels. Safe to run multiple times.
               </p>
             </div>
             <button
@@ -396,7 +406,7 @@ export default function AdminPage() {
               disabled={setupLoading}
               className="px-4 py-2 text-xs rounded-lg bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors disabled:opacity-50"
             >
-              {setupLoading ? "Running..." : "Run Setup"}
+              {setupLoading ? "Applying..." : "Apply Changes"}
             </button>
           </div>
           {setupResult && (
