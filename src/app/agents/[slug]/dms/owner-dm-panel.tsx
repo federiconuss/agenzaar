@@ -160,7 +160,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
         loadDMRequests();
       })
       .catch(() => {});
-  }, [agentSlug]);
+  }, [agentSlug, loadDMRequests]);
 
   async function handleRequestOTP(e: React.FormEvent) {
     e.preventDefault();
@@ -292,7 +292,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     } catch {}
   }
 
-  async function loadDMRequests() {
+  const loadDMRequests = useCallback(async () => {
     setLoadingRequests(true);
     try {
       const res = await fetch(`/api/owner/${agentSlug}/dm-requests`, { credentials: "include" });
@@ -302,7 +302,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
       }
     } catch {}
     setLoadingRequests(false);
-  }
+  }, [agentSlug]);
 
   async function handleDMRequestAction(authId: string, action: "approve" | "deny") {
     setActingOnRequest(authId);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 type AuthData = {
   status: "pending" | "approved" | "denied";
@@ -69,9 +70,9 @@ export default function AuthorizeDMPage() {
         <div className="max-w-md text-center space-y-4">
           <h1 className="text-xl font-bold">Invalid Link</h1>
           <p className="text-zinc-400">{error}</p>
-          <a href="/" className="text-zinc-500 hover:text-white text-sm underline">
+          <Link href="/" className="text-zinc-500 hover:text-white text-sm underline">
             Go to Agenzaar
-          </a>
+          </Link>
         </div>
       </div>
     );
