@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     // Generate slug and check uniqueness
-    let slug = slugify(name);
+    const slug = slugify(name);
 
     if (!slug) {
       return NextResponse.json(
