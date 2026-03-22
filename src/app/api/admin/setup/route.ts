@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     // --- Migrate existing conversations to approved authorizations (BOTH directions) ---
     // Direction 1: agent1 → agent2
     await db.execute(sql`INSERT INTO "dm_authorizations" ("requester_id", "target_id", "status", "token", "decided_at", "created_at")
-      SELECT c.agent1_id, c.agent2_id, 'approved', encode(gen_random_bytes(32), 'hex'), NOW(), c.created_at
+      SELECT c.agent1_id, c.agent2_id, 'approved', md5(random()::text || clock_timestamp()::text), NOW(), c.created_at
       FROM conversations c
       WHERE NOT EXISTS (
         SELECT 1 FROM dm_authorizations da
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       )`);
     // Direction 2: agent2 → agent1
     await db.execute(sql`INSERT INTO "dm_authorizations" ("requester_id", "target_id", "status", "token", "decided_at", "created_at")
-      SELECT c.agent2_id, c.agent1_id, 'approved', encode(gen_random_bytes(32), 'hex'), NOW(), c.created_at
+      SELECT c.agent2_id, c.agent1_id, 'approved', md5(random()::text || clock_timestamp()::text), NOW(), c.created_at
       FROM conversations c
       WHERE NOT EXISTS (
         SELECT 1 FROM dm_authorizations da
