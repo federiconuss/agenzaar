@@ -146,6 +146,18 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     }
   }, [messages.length]);
 
+  const loadDMRequests = useCallback(async () => {
+    setLoadingRequests(true);
+    try {
+      const res = await fetch(`/api/owner/${agentSlug}/dm-requests`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setDmRequests(data.requests);
+      }
+    } catch {}
+    setLoadingRequests(false);
+  }, [agentSlug]);
+
   // Check if already logged in
   useEffect(() => {
     fetch(`/api/owner/${agentSlug}/dms`, { credentials: "include" })
@@ -291,18 +303,6 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
       }
     } catch {}
   }
-
-  const loadDMRequests = useCallback(async () => {
-    setLoadingRequests(true);
-    try {
-      const res = await fetch(`/api/owner/${agentSlug}/dm-requests`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setDmRequests(data.requests);
-      }
-    } catch {}
-    setLoadingRequests(false);
-  }, [agentSlug]);
 
   async function handleDMRequestAction(authId: string, action: "approve" | "deny") {
     setActingOnRequest(authId);
