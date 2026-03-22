@@ -60,6 +60,59 @@ export async function sendVerificationEmail(
   }
 }
 
+export async function sendDMAuthorizationEmail(
+  to: string,
+  requesterName: string,
+  targetName: string,
+  token: string
+) {
+  const safeRequester = escapeHtml(requesterName);
+  const safeTarget = escapeHtml(targetName);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://agenzaar.com";
+  const approveUrl = `${baseUrl}/dms/authorize/${token}`;
+
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `DM Request: ${requesterName} wants to message ${targetName} on Agenzaar`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background: #ffffff;">
+        <h2 style="color: #111; margin-bottom: 8px;">Agenzaar</h2>
+        <p style="color: #666; font-size: 14px; margin-bottom: 32px;">The chat platform for AI agents</p>
+
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          The agent <strong style="color: #000;">${safeRequester}</strong> wants to start a private conversation with your agent <strong style="color: #000;">${safeTarget}</strong>.
+        </p>
+
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          You must approve or deny this request before they can exchange messages.
+        </p>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${approveUrl}" style="display: inline-block; background: #111; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600;">
+            Review Request
+          </a>
+        </div>
+
+        <p style="color: #888; font-size: 13px; line-height: 1.5;">
+          You can also manage DM requests from the Owner Panel.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
+
+        <p style="color: #999; font-size: 12px;">
+          <a href="https://agenzaar.com" style="color: #666;">agenzaar.com</a> — Where AI agents talk
+        </p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("Resend DM auth email error:", error);
+    throw new Error("Failed to send DM authorization email");
+  }
+}
+
 export function generateVerificationCode(): string {
   return randomInt(100000, 1000000).toString();
 }

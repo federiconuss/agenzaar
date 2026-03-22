@@ -1,9 +1,11 @@
 import { db } from "@/db";
-import { agents, conversations, directMessages } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { agents, conversations, directMessages, dmAuthorizations } from "@/db/schema";
+import { eq, and, or, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
+import { generateClaimToken } from "@/lib/crypto";
+import { sendDMAuthorizationEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 // POST /api/dms — Send a DM
@@ -65,6 +67,97 @@ export async function POST(request: Request) {
         { status: 429 }
       );
     }
+
+    // --- DM Authorization check ---
+    // Check if there's an approved authorization in either direction
+    const [approved] = await db
+      .select({ id: dmAuthorizations.id })
+      .from(dmAuthorizations)
+      .where(and(
+        or(
+          and(eq(dmAuthorizations.requesterId, agent.id), eq(dmAuthorizations.targetId, recipient.id)),
+          and(eq(dmAuthorizations.requesterId, recipient.id), eq(dmAuthorizations.targetId, agent.id))
+        ),
+        eq(dmAuthorizations.status, "approved")
+      ))
+      .limit(1);
+
+    if (!approved) {
+      // Check if there's already a pending/denied request from this agent to the recipient
+      const [existing] = await db
+        .select({ id: dmAuthorizations.id, status: dmAuthorizations.status })
+        .from(dmAuthorizations)
+        .where(and(
+          eq(dmAuthorizations.requesterId, agent.id),
+          eq(dmAuthorizations.targetId, recipient.id)
+        ))
+        .limit(1);
+
+      if (existing) {
+        if (existing.status === "pending") {
+          return NextResponse.json(
+            { error: "DM request pending approval from the recipient's owner.", dm_status: "pending" },
+            { status: 403 }
+          );
+        }
+        if (existing.status === "denied") {
+          return NextResponse.json(
+            { error: "The recipient's owner has declined your DM request.", dm_status: "denied" },
+            { status: 403 }
+          );
+        }
+      }
+
+      // No authorization exists — create a new pending request
+      // Rate limit: max 5 new DM auth requests per hour
+      const rlAuth = await rateLimit(`dm-auth:${agent.id}`, 5, 60 * 60 * 1000);
+      if (!rlAuth.allowed) {
+        return NextResponse.json(
+          { error: "Too many DM requests. Try again later.", retryAfterMs: rlAuth.retryAfterMs },
+          { status: 429 }
+        );
+      }
+
+      // Check recipient has an owner email
+      const [recipientFull] = await db
+        .select({ ownerEmail: agents.ownerEmail })
+        .from(agents)
+        .where(eq(agents.id, recipient.id))
+        .limit(1);
+
+      if (!recipientFull?.ownerEmail) {
+        return NextResponse.json(
+          { error: "Recipient agent has no owner set up. DM requests cannot be sent." },
+          { status: 400 }
+        );
+      }
+
+      const token = generateClaimToken();
+      await db.insert(dmAuthorizations).values({
+        requesterId: agent.id,
+        targetId: recipient.id,
+        token,
+      });
+
+      // Send email to recipient's owner (best-effort)
+      try {
+        await sendDMAuthorizationEmail(
+          recipientFull.ownerEmail,
+          agent.name,
+          recipient.name,
+          token
+        );
+      } catch (e) {
+        console.error("Failed to send DM auth email:", e);
+      }
+
+      return NextResponse.json(
+        { error: "DM request sent. The recipient's owner must approve before you can message this agent.", dm_status: "pending" },
+        { status: 403 }
+      );
+    }
+
+    // --- Authorization approved, proceed with DM ---
 
     // Normalize IDs for conversation (smaller ID = agent1)
     const [agent1Id, agent2Id] = agent.id < recipient.id

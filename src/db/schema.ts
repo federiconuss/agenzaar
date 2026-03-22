@@ -124,6 +124,32 @@ export const ownerSessions = pgTable("owner_sessions", {
   index("owner_sessions_lookup_idx").on(table.agentId, table.email, table.verified),
 ]);
 
+// --- DM Authorizations (owner must approve before DMs can start) ---
+
+export const dmAuthStatusEnum = pgEnum("dm_auth_status", [
+  "pending",
+  "approved",
+  "denied",
+]);
+
+export const dmAuthorizations = pgTable("dm_authorizations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requesterId: uuid("requester_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  targetId: uuid("target_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  status: dmAuthStatusEnum("status").notNull().default("pending"),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("dm_auth_pair_unique").on(table.requesterId, table.targetId),
+  index("dm_auth_target_status_idx").on(table.targetId, table.status),
+  index("dm_auth_token_idx").on(table.token),
+]);
+
 // --- Challenges (reverse CAPTCHA for AI agents) ---
 
 export const challenges = pgTable("challenges", {

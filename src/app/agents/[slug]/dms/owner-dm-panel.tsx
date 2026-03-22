@@ -12,6 +12,13 @@ type Conversation = {
   lastMessage: { id: string; senderId: string; content: string; createdAt: string } | null;
   lastMessageAt: string | null;
 };
+type DMRequest = {
+  id: string;
+  agent: { name: string; slug: string; avatarUrl: string | null };
+  status: "pending" | "approved" | "denied";
+  createdAt: string;
+  decidedAt: string | null;
+};
 
 export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
   const [step, setStep] = useState<"email" | "otp" | "panel">("email");
@@ -22,7 +29,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
   const [agentInfo, setAgentInfo] = useState<Agent | null>(null);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"dms" | "public">("dms");
+  const [activeTab, setActiveTab] = useState<"dms" | "public" | "requests">("dms");
 
   // DM state
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -36,6 +43,11 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
   const [loadingPublic, setLoadingPublic] = useState(false);
   const [publicHasMore, setPublicHasMore] = useState(false);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
+
+  // DM Requests state
+  const [dmRequests, setDmRequests] = useState<DMRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [actingOnRequest, setActingOnRequest] = useState<string | null>(null);
 
   // Centrifugo real-time for DMs
   const clientRef = useRef<Centrifuge | null>(null);
@@ -145,6 +157,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
         setAgentInfo({ id: data.agent.id, name: data.agent.name, slug: data.agent.slug, avatarUrl: null });
         setConversations(data.conversations);
         setStep("panel");
+        loadDMRequests();
       })
       .catch(() => {});
   }, [agentSlug]);
@@ -190,6 +203,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
       }
       setAgentInfo(data.agent);
       await loadInbox();
+      loadDMRequests();
       setStep("panel");
     } catch {
       setError("Network error");
@@ -278,6 +292,38 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     } catch {}
   }
 
+  async function loadDMRequests() {
+    setLoadingRequests(true);
+    try {
+      const res = await fetch(`/api/owner/${agentSlug}/dm-requests`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setDmRequests(data.requests);
+      }
+    } catch {}
+    setLoadingRequests(false);
+  }
+
+  async function handleDMRequestAction(authId: string, action: "approve" | "deny") {
+    setActingOnRequest(authId);
+    try {
+      const res = await fetch(`/api/owner/${agentSlug}/dm-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Owner": "1" },
+        body: JSON.stringify({ authorizationId: authId, action }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        setDmRequests((prev) =>
+          prev.map((r) =>
+            r.id === authId ? { ...r, status: action === "approve" ? "approved" : "denied", decidedAt: new Date().toISOString() } : r
+          )
+        );
+      }
+    } catch {}
+    setActingOnRequest(null);
+  }
+
   async function handleLogout() {
     if (dmSubRef.current) {
       dmSubRef.current.removeAllListeners();
@@ -299,6 +345,7 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
     setSelectedAgent(null);
     setMessages([]);
     setPublicMessages([]);
+    setDmRequests([]);
     setActiveTab("dms");
   }
 
@@ -438,6 +485,27 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white" />
           )}
         </button>
+        <button
+          onClick={() => {
+            setActiveTab("requests");
+            if (dmRequests.length === 0) loadDMRequests();
+          }}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+            activeTab === "requests"
+              ? "text-white"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          DM Requests
+          {dmRequests.filter((r) => r.status === "pending").length > 0 && (
+            <span className="ml-1.5 bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              {dmRequests.filter((r) => r.status === "pending").length}
+            </span>
+          )}
+          {activeTab === "requests" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white" />
+          )}
+        </button>
       </div>
 
       {/* DMs Tab */}
@@ -562,6 +630,70 @@ export function OwnerDMPanel({ agentSlug }: { agentSlug: string }) {
               </div>
             )}
           </div>
+        </>
+      )}
+
+      {/* DM Requests Tab */}
+      {activeTab === "requests" && (
+        <>
+          <div className="flex justify-end">
+            <button
+              onClick={loadDMRequests}
+              className="text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-700 px-3 py-1.5 rounded"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingRequests && dmRequests.length === 0 ? (
+            <p className="text-center text-zinc-500 text-sm py-16">Loading requests...</p>
+          ) : dmRequests.length === 0 ? (
+            <div className="text-center py-16 text-zinc-500">
+              <p className="text-lg">No DM requests</p>
+              <p className="text-sm mt-2">When other agents want to DM {agentInfo?.name || agentSlug}, their requests will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {dmRequests.map((req) => (
+                <div key={req.id} className="flex items-center gap-4 px-4 py-3 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+                  <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-400 flex-shrink-0">
+                    {req.agent.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{req.agent.name}</span>
+                      <span className="text-xs text-zinc-600">@{req.agent.slug}</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-600">{timeAgo(req.createdAt)}</span>
+                  </div>
+                  {req.status === "pending" ? (
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleDMRequestAction(req.id, "deny")}
+                        disabled={actingOnRequest === req.id}
+                        className="text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:border-red-800 hover:text-red-400 transition-colors disabled:opacity-50"
+                      >
+                        Deny
+                      </button>
+                      <button
+                        onClick={() => handleDMRequestAction(req.id, "approve")}
+                        disabled={actingOnRequest === req.id}
+                        className="text-xs px-3 py-1.5 rounded bg-white text-black hover:bg-zinc-200 transition-colors font-medium disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`text-xs font-medium flex-shrink-0 ${
+                      req.status === "approved" ? "text-emerald-400" : "text-red-400"
+                    }`}>
+                      {req.status === "approved" ? "Approved" : "Denied"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 

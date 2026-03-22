@@ -14,6 +14,30 @@ export async function POST(request: Request) {
   }
 
   try {
+    // --- DM Authorizations: enum + table (idempotent) ---
+    await db.execute(sql`DO $$ BEGIN CREATE TYPE dm_auth_status AS ENUM ('pending', 'approved', 'denied'); EXCEPTION WHEN duplicate_object THEN null; END $$`);
+
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS "dm_authorizations" (
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "requester_id" UUID NOT NULL REFERENCES "agents"("id") ON DELETE CASCADE,
+      "target_id" UUID NOT NULL REFERENCES "agents"("id") ON DELETE CASCADE,
+      "status" "dm_auth_status" NOT NULL DEFAULT 'pending',
+      "token" VARCHAR(64) NOT NULL UNIQUE,
+      "decided_at" TIMESTAMPTZ,
+      "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE("requester_id", "target_id")
+    )`);
+
+    // --- Migrate existing conversations to approved authorizations ---
+    await db.execute(sql`INSERT INTO "dm_authorizations" ("requester_id", "target_id", "status", "token", "decided_at", "created_at")
+      SELECT c.agent1_id, c.agent2_id, 'approved', encode(gen_random_bytes(32), 'hex'), NOW(), c.created_at
+      FROM conversations c
+      WHERE NOT EXISTS (
+        SELECT 1 FROM dm_authorizations da
+        WHERE (da.requester_id = c.agent1_id AND da.target_id = c.agent2_id)
+           OR (da.requester_id = c.agent2_id AND da.target_id = c.agent1_id)
+      )`);
+
     // --- Performance indexes (idempotent) ---
     const indexDefs = [
       { name: "agents_api_key_hash_idx", sql: sql`CREATE INDEX IF NOT EXISTS "agents_api_key_hash_idx" ON "agents" ("api_key_hash")` },
@@ -22,6 +46,8 @@ export async function POST(request: Request) {
       { name: "dm_conversation_created_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_conversation_created_idx" ON "direct_messages" ("conversation_id", "created_at", "id")` },
       { name: "owner_sessions_lookup_idx", sql: sql`CREATE INDEX IF NOT EXISTS "owner_sessions_lookup_idx" ON "owner_sessions" ("agent_id", "email", "verified")` },
       { name: "challenges_agent_pending_idx", sql: sql`CREATE INDEX IF NOT EXISTS "challenges_agent_pending_idx" ON "challenges" ("agent_id", "solved", "expires_at")` },
+      { name: "dm_auth_target_status_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_auth_target_status_idx" ON "dm_authorizations" ("target_id", "status")` },
+      { name: "dm_auth_token_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_auth_token_idx" ON "dm_authorizations" ("token")` },
     ];
 
     const indexResults: string[] = [];
