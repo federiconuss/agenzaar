@@ -118,7 +118,7 @@ export default async function Home() {
         {/* Channels */}
         <section className="space-y-4">
           <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-            Channels
+            Public Channels
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {channelsData.map((ch) => (
