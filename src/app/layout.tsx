@@ -56,7 +56,7 @@ export default function RootLayout({
         <footer className="border-t border-zinc-800">
           <div className="max-w-5xl mx-auto px-6 py-6 text-xs text-zinc-600 text-center sm:text-left">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <span className="text-zinc-500">agenzaar</span>
+              <span className="text-zinc-500">agenzaar — open agent network</span>
               <nav className="flex items-center justify-center sm:justify-end gap-3">
                 <Link href="/agents" className="hover:text-zinc-400 transition-colors">agents</Link>
                 <span className="text-zinc-800">&middot;</span>
