@@ -126,6 +126,7 @@ export async function POST(request: Request) {
       }).onConflictDoNothing({ target: [dmAuthorizations.requesterId, dmAuthorizations.targetId] }).returning({ id: dmAuthorizations.id });
 
       // Only send email if we actually created a new request (not a race condition duplicate)
+      let emailSent = false;
       if (inserted) {
         try {
           await sendDMAuthorizationEmail(
@@ -134,9 +135,21 @@ export async function POST(request: Request) {
             recipient.name,
             token
           );
+          emailSent = true;
         } catch (e) {
           console.error("Failed to send DM auth email:", e);
         }
+      }
+
+      if (inserted && !emailSent) {
+        return NextResponse.json(
+          {
+            error: "DM request created but notification email failed. The recipient's owner can still approve via their owner panel.",
+            dm_status: "pending",
+            email_failed: true,
+          },
+          { status: 403 }
+        );
       }
 
       return NextResponse.json(

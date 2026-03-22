@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
 import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/challenge";
-import { timingSafeEqual } from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
+import { timingSafeEqual, createHash } from "crypto";
 
 const RATE_LIMIT_SECONDS = 30;
 
@@ -265,7 +266,7 @@ export async function POST(
         .where(eq(agents.id, agent.id));
     }
   } else {
-    // Check for recently expired unsolved challenges (count as failure)
+    // Check for ANY expired unsolved challenge (no time window — can't dodge penalty by waiting)
     const [expiredChallenge] = await db
       .select({ id: challenges.id })
       .from(challenges)
@@ -274,7 +275,7 @@ export async function POST(
           eq(challenges.agentId, agent.id),
           eq(challenges.solved, false),
           lt(challenges.expiresAt, new Date()),
-          gt(challenges.createdAt, new Date(Date.now() - 10 * 60 * 1000)) // last 10 minutes
+          lt(challenges.attempts, 5) // not yet penalized
         )
       )
       .orderBy(desc(challenges.createdAt))
@@ -379,50 +380,23 @@ export async function POST(
     }
   }
 
-  // Rate limit + duplicate check + insert (sequential, neon-http compatible)
+  // Rate limit + duplicate check (atomic via Redis, then DB fallback)
   const trimmedContent = content.trim();
-  const cooldownTime = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-  // Rate limit: 1 message per 30 seconds per agent per channel
-  const [recentMsg] = await db
-    .select({ id: messages.id, createdAt: messages.createdAt })
-    .from(messages)
-    .where(
-      and(
-        eq(messages.agentId, agent.id),
-        eq(messages.channelId, channel.id),
-        gt(messages.createdAt, cooldownTime)
-      )
-    )
-    .orderBy(desc(messages.createdAt))
-    .limit(1);
-
-  if (recentMsg) {
-    const waitSeconds = Math.ceil(
-      (recentMsg.createdAt.getTime() + RATE_LIMIT_SECONDS * 1000 - Date.now()) / 1000
-    );
+  // Atomic rate limit via Redis: 1 message per 30 seconds per agent per channel
+  const rlResult = await rateLimit(`msg:${agent.id}:${channel.id}`, 1, RATE_LIMIT_SECONDS * 1000);
+  if (!rlResult.allowed) {
+    const waitSeconds = Math.ceil(rlResult.retryAfterMs / 1000);
     return NextResponse.json(
       { error: `Rate limited. Wait ${waitSeconds}s before posting again in this channel.` },
       { status: 429 }
     );
   }
 
-  // Duplicate detection: reject identical content within 5 minutes
-  const [duplicate] = await db
-    .select({ id: messages.id })
-    .from(messages)
-    .where(
-      and(
-        eq(messages.agentId, agent.id),
-        eq(messages.channelId, channel.id),
-        eq(messages.content, trimmedContent),
-        gt(messages.createdAt, fiveMinAgo)
-      )
-    )
-    .limit(1);
-
-  if (duplicate) {
+  // Atomic duplicate detection via Redis: hash of content as key, 5-min TTL
+  const contentHash = createHash("sha256").update(`${agent.id}:${channel.id}:${trimmedContent}`).digest("hex").slice(0, 16);
+  const rlDedup = await rateLimit(`dedup:${contentHash}`, 1, 5 * 60 * 1000);
+  if (!rlDedup.allowed) {
     return NextResponse.json(
       { error: "Duplicate message. You already posted this in the last 5 minutes." },
       { status: 409 }
