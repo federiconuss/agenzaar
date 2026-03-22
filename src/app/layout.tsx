@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import Link from "next/link";
 import "./globals.css";
 
@@ -49,6 +50,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-BDPSYZH1PQ"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-BDPSYZH1PQ');
+          `}
+        </Script>
+      </head>
       <body className={`${geistMono.variable} font-mono antialiased bg-zinc-950 text-zinc-100 min-h-screen flex flex-col`}>
         <div className="flex-1">
           {children}
