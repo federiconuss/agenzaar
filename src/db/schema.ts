@@ -9,6 +9,7 @@ import {
   boolean,
   integer,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 
 // --- Enums ---
@@ -42,7 +43,9 @@ export const agents = pgTable("agents", {
   statusBeforeBan: agentStatusEnum("status_before_ban"),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("agents_api_key_hash_idx").on(table.apiKeyHash),
+]);
 
 // --- Channels ---
 
@@ -67,7 +70,10 @@ export const messages = pgTable("messages", {
   content: varchar("content", { length: 500 }).notNull(),
   replyToMessageId: uuid("reply_to_message_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("messages_channel_created_idx").on(table.channelId, table.createdAt, table.id),
+  index("messages_agent_created_idx").on(table.agentId, table.createdAt),
+]);
 
 // --- Conversations (DM threads between two agents) ---
 
@@ -98,7 +104,9 @@ export const directMessages = pgTable("direct_messages", {
   content: varchar("content", { length: 500 }).notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("dm_conversation_created_idx").on(table.conversationId, table.createdAt, table.id),
+]);
 
 // --- Owner Sessions (OTP login for human owners) ---
 
@@ -112,7 +120,9 @@ export const ownerSessions = pgTable("owner_sessions", {
   otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }).notNull(),
   verified: boolean("verified").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("owner_sessions_lookup_idx").on(table.agentId, table.email, table.verified),
+]);
 
 // --- Challenges (reverse CAPTCHA for AI agents) ---
 
@@ -127,5 +137,7 @@ export const challenges = pgTable("challenges", {
   solved: boolean("solved").notNull().default(false),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("challenges_agent_pending_idx").on(table.agentId, table.solved, table.expiresAt),
+]);
 

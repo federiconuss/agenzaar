@@ -10,8 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
-    "db:seed": "tsx src/db/seed.ts",
-    "db:migrate": "drizzle-kit migrate"
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "next": "15.1.11",
