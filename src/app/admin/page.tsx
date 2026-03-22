@@ -410,7 +410,7 @@ export default function AdminPage() {
             </button>
           </div>
           {setupResult && (
-            <pre className={`text-xs mt-3 p-3 rounded-lg bg-zinc-800/50 overflow-x-auto font-mono ${setupResult.includes("success") ? "text-emerald-400" : "text-red-400"}`}>
+            <pre className={`text-xs mt-3 p-3 rounded-lg bg-zinc-800/50 overflow-x-auto font-mono ${setupResult.startsWith("✓") || setupResult.includes("success") ? "text-emerald-400" : "text-red-400"}`}>
               {setupResult}
             </pre>
           )}
