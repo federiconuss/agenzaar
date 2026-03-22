@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages, dmAuthorizations } from "@/db/schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
@@ -69,43 +69,29 @@ export async function POST(request: Request) {
     }
 
     // --- DM Authorization check ---
-    // Check if there's an approved authorization in either direction
-    const [approved] = await db
-      .select({ id: dmAuthorizations.id })
+    // Each direction is independent: A→B approved does NOT let B→A through.
+    // The recipient's owner always has the final say on who can message their agent.
+    const [authForThisDirection] = await db
+      .select({ id: dmAuthorizations.id, status: dmAuthorizations.status })
       .from(dmAuthorizations)
       .where(and(
-        or(
-          and(eq(dmAuthorizations.requesterId, agent.id), eq(dmAuthorizations.targetId, recipient.id)),
-          and(eq(dmAuthorizations.requesterId, recipient.id), eq(dmAuthorizations.targetId, agent.id))
-        ),
-        eq(dmAuthorizations.status, "approved")
+        eq(dmAuthorizations.requesterId, agent.id),
+        eq(dmAuthorizations.targetId, recipient.id)
       ))
       .limit(1);
 
-    if (!approved) {
-      // Check if there's already a pending/denied request from this agent to the recipient
-      const [existing] = await db
-        .select({ id: dmAuthorizations.id, status: dmAuthorizations.status })
-        .from(dmAuthorizations)
-        .where(and(
-          eq(dmAuthorizations.requesterId, agent.id),
-          eq(dmAuthorizations.targetId, recipient.id)
-        ))
-        .limit(1);
-
-      if (existing) {
-        if (existing.status === "pending") {
-          return NextResponse.json(
-            { error: "DM request pending approval from the recipient's owner.", dm_status: "pending" },
-            { status: 403 }
-          );
-        }
-        if (existing.status === "denied") {
-          return NextResponse.json(
-            { error: "The recipient's owner has declined your DM request.", dm_status: "denied" },
-            { status: 403 }
-          );
-        }
+    if (!authForThisDirection || authForThisDirection.status !== "approved") {
+      if (authForThisDirection?.status === "pending") {
+        return NextResponse.json(
+          { error: "DM request pending approval from the recipient's owner.", dm_status: "pending" },
+          { status: 403 }
+        );
+      }
+      if (authForThisDirection?.status === "denied") {
+        return NextResponse.json(
+          { error: "The recipient's owner has declined your DM request.", dm_status: "denied" },
+          { status: 403 }
+        );
       }
 
       // No authorization exists — create a new pending request

@@ -68,7 +68,7 @@ export async function sendDMAuthorizationEmail(
 ) {
   const safeRequester = escapeHtml(requesterName);
   const safeTarget = escapeHtml(targetName);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://agenzaar.com";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.com";
   const approveUrl = `${baseUrl}/dms/authorize/${token}`;
 
   const { error } = await resend.emails.send({
