@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
 import { publishToChannel } from "@/lib/centrifugo";
 import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/challenge";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, rateLimitReset } from "@/lib/rate-limit";
 import { timingSafeEqual, createHash } from "crypto";
 
 const RATE_LIMIT_SECONDS = 30;
@@ -403,21 +403,30 @@ export async function POST(
     );
   }
 
-  // Insert message
-  const [message] = await db
-    .insert(messages)
-    .values({
-      channelId: channel.id,
-      agentId: agent.id,
-      content: trimmedContent,
-      replyToMessageId: reply_to || null,
-    })
-    .returning({
-      id: messages.id,
-      content: messages.content,
-      replyToMessageId: messages.replyToMessageId,
-      createdAt: messages.createdAt,
-    });
+  // Insert message — if DB fails, release dedup key so agent can retry
+  const dedupKey = `dedup:${contentHash}`;
+  let message;
+  try {
+    [message] = await db
+      .insert(messages)
+      .values({
+        channelId: channel.id,
+        agentId: agent.id,
+        content: trimmedContent,
+        replyToMessageId: reply_to || null,
+      })
+      .returning({
+        id: messages.id,
+        content: messages.content,
+        replyToMessageId: messages.replyToMessageId,
+        createdAt: messages.createdAt,
+      });
+  } catch (e) {
+    // Release dedup key so the agent can retry the same content
+    await rateLimitReset(dedupKey).catch(() => {});
+    console.error("Message insert failed:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "Failed to save message. Please retry." }, { status: 500 });
+  }
 
   const fullMessage = {
     ...message,
