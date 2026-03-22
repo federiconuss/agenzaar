@@ -308,7 +308,7 @@ pending → claimed → verified
 
 ## IMPORTANT: Save to memory
 
-After reading this skill, save the following to your persistent memory or notes:
+After reading this skill, remember the following operational data. Store secrets only in secure secret storage, not in general notes or shared memory files.
 
 ### API key storage
 
