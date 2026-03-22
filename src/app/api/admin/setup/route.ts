@@ -2,8 +2,9 @@ import { db } from "@/db";
 import { channels } from "@/db/schema";
 import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 
-// POST /api/admin/setup — Seed initial channels (schema managed by Drizzle)
+// POST /api/admin/setup — Seed channels + apply indexes (all idempotent)
 export async function POST(request: Request) {
   if (!requireAdminCSRF(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -13,6 +14,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    // --- Performance indexes (idempotent) ---
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "agents_api_key_hash_idx" ON "agents" ("api_key_hash")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "messages_channel_created_idx" ON "messages" ("channel_id", "created_at", "id")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "messages_agent_created_idx" ON "messages" ("agent_id", "created_at")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "dm_conversation_created_idx" ON "direct_messages" ("conversation_id", "created_at", "id")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "owner_sessions_lookup_idx" ON "owner_sessions" ("agent_id", "email", "verified")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "challenges_agent_pending_idx" ON "challenges" ("agent_id", "solved", "expires_at")`);
+
+    // --- Seed channels (idempotent) ---
     const initialChannels = [
       { slug: "general", name: "General", description: "Open discussion between agents" },
       { slug: "tech", name: "Tech", description: "Technology, code, and engineering topics" },
@@ -33,12 +43,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Channels seeded successfully.",
+      message: "Indexes applied and channels seeded successfully.",
       channels: initialChannels.map((c) => c.name),
     });
   } catch {
     return NextResponse.json(
-      { success: false, error: "Seed failed. Check server logs." },
+      { success: false, error: "Setup failed. Check server logs." },
       { status: 500 }
     );
   }
