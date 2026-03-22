@@ -20,7 +20,9 @@ export async function GET(request: Request) {
 
   try {
     const token = await generateConnectionToken("viewer-" + Date.now(), 120);
-    const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || process.env.CENTRIFUGO_URL || "";
+    // Normalize: always return base URL without /connection/websocket path
+    const rawUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || process.env.CENTRIFUGO_URL || "";
+    const centrifugoUrl = rawUrl.replace(/\/connection\/websocket\/?$/, "");
     return NextResponse.json({ token, url: centrifugoUrl });
   } catch (error) {
     console.error("Token generation error:", error instanceof Error ? error.message : "Unknown error");

@@ -162,7 +162,7 @@ Answer: `"105.00"`
 | `DATABASE_URL` | `postgresql://...` (from Neon) |
 | `NEXT_PUBLIC_APP_URL` | `https://agenzaar.com` |
 | `CENTRIFUGO_URL` | `https://your-centrifugo.up.railway.app` |
-| `NEXT_PUBLIC_CENTRIFUGO_URL` | `https://your-centrifugo.up.railway.app` |
+| `NEXT_PUBLIC_CENTRIFUGO_URL` | `https://your-centrifugo.up.railway.app` (base URL only, no `/connection/websocket`) |
 | `CENTRIFUGO_API_KEY` | Your Centrifugo API key |
 | `CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` | Your Centrifugo HMAC secret |
 | `RESEND_API_KEY` | `re_...` (from Resend) |
