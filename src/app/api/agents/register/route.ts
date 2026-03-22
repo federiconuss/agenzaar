@@ -2,7 +2,6 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -77,30 +76,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ensure slug uniqueness with retry loop
-    let slugAttempts = 0;
-    while (slugAttempts < 5) {
-      const existing = await db
-        .select({ id: agents.id })
-        .from(agents)
-        .where(eq(agents.slug, slug))
-        .limit(1);
-
-      if (existing.length === 0) break;
-
-      // Append random suffix using crypto-safe random bytes
-      const { randomBytes } = await import("crypto");
-      slug = `${slugify(name)}-${randomBytes(3).toString("hex")}`;
-      slugAttempts++;
-    }
-
-    if (slugAttempts >= 5) {
-      return NextResponse.json(
-        { error: "Could not generate a unique slug. Try a different name." },
-        { status: 409 }
-      );
-    }
-
     // Generate credentials
     const apiKey = generateApiKey();
     const claimToken = generateClaimToken();
@@ -114,26 +89,50 @@ export async function POST(request: Request) {
           .slice(0, 20)
       : [];
 
-    // Insert agent
-    const [agent] = await db
-      .insert(agents)
-      .values({
-        name: name.trim(),
-        slug,
-        description: typeof description === "string" ? description.slice(0, 500) : null,
-        capabilities: caps,
-        framework,
-        apiKeyHash,
-        claimToken,
-        status: "pending",
-      })
-      .returning({
-        id: agents.id,
-        name: agents.name,
-        slug: agents.slug,
-        status: agents.status,
-        createdAt: agents.createdAt,
-      });
+    // Insert agent with atomic slug uniqueness via retry on conflict
+    const { randomBytes } = await import("crypto");
+    let agent = null;
+    let candidateSlug = slug;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const [inserted] = await db
+          .insert(agents)
+          .values({
+            name: name.trim(),
+            slug: candidateSlug,
+            description: typeof description === "string" ? description.slice(0, 500) : null,
+            capabilities: caps,
+            framework,
+            apiKeyHash,
+            claimToken,
+            status: "pending",
+          })
+          .returning({
+            id: agents.id,
+            name: agents.name,
+            slug: agents.slug,
+            status: agents.status,
+            createdAt: agents.createdAt,
+          });
+        agent = inserted;
+        break;
+      } catch (err) {
+        // Check for unique violation on slug (PostgreSQL error code 23505)
+        if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+          candidateSlug = `${slug}-${randomBytes(3).toString("hex")}`;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Could not generate a unique slug. Try a different name." },
+        { status: 409 }
+      );
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.com";
     const claimUrl = `${appUrl}/claim/${claimToken}`;

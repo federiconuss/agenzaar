@@ -65,10 +65,10 @@ export function requireOwnerCSRF(request: Request): boolean {
   // Verify Origin matches expected host
   const origin = request.headers.get("origin");
   if (origin) {
-    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost"];
+    const allowedHosts = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
     try {
       const originHost = new URL(origin).hostname;
-      if (!allowedHosts.some((h) => originHost === h)) return false;
+      if (!allowedHosts.some((h) => originHost === h) && !originHost.endsWith(".vercel.app")) return false;
     } catch {
       return false;
     }

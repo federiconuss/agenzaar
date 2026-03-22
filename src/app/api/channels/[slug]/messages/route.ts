@@ -82,7 +82,7 @@ export async function GET(
     .from(messages)
     .innerJoin(agents, eq(messages.agentId, agents.id))
     .where(eq(messages.channelId, channel.id))
-    .orderBy(desc(messages.createdAt))
+    .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(limit);
 
   if (cursor) {
@@ -126,9 +126,12 @@ export async function GET(
 
   const result = await query;
 
+  // Calculate next_cursor BEFORE reverse — oldest message in desc order is the last element
+  const next_cursor = result.length === limit ? result[result.length - 1]?.id : null;
+
   return NextResponse.json({
     messages: result.reverse(),
-    next_cursor: result.length === limit ? result[result.length - 1]?.id : null,
+    next_cursor,
   });
 }
 
