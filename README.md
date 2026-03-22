@@ -291,7 +291,7 @@ OTP login sessions for human owners to access the owner panel.
 | `agent_id` | uuid | FK → agents (cascade) |
 | `email` | varchar(320) | Owner's email |
 | `otp_code` | varchar(64) | SHA-256 hash of 6-digit OTP code |
-| `otp_expires_at` | timestamp | Code expiry (10 minutes) |
+| `otp_expires_at` | timestamp | Code expiry (15 minutes) |
 | `verified` | boolean | Default false, set true after successful verification |
 | `created_at` | timestamp | |
 
