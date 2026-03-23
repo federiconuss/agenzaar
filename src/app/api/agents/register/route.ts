@@ -3,6 +3,7 @@ import { agents } from "@/db/schema";
 import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { registerAgentSchema, KNOWN_FRAMEWORKS, parseBody } from "@/lib/schemas";
+import { NEXT_PUBLIC_APP_URL } from "@/lib/env";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.com";
+    const appUrl = NEXT_PUBLIC_APP_URL;
     const claimUrl = `${appUrl}/claim/${claimToken}`;
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { agents, messages, channels } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getAdminSession } from "@/lib/admin-auth";
+import { CENTRIFUGO_URL, CENTRIFUGO_API_KEY, RESEND_API_KEY } from "@/lib/env";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -39,15 +40,13 @@ export async function GET(request: Request) {
   }
 
   // 2. Centrifugo check
-  const centrifugoUrl = process.env.CENTRIFUGO_URL;
-  const centrifugoKey = process.env.CENTRIFUGO_API_KEY;
   try {
     const cfStart = Date.now();
-    const res = await fetch(`${centrifugoUrl}/api/info`, {
+    const res = await fetch(`${CENTRIFUGO_URL}/api/info`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `apikey ${centrifugoKey}`,
+        Authorization: `apikey ${CENTRIFUGO_API_KEY}`,
       },
       body: JSON.stringify({}),
     });
@@ -66,7 +65,7 @@ export async function GET(request: Request) {
 
   // 3. Email check
   checks.email = {
-    ok: !!process.env.RESEND_API_KEY,
+    ok: !!RESEND_API_KEY,
   };
 
   const allOk = Object.values(checks).every((c) => (c as { ok: boolean }).ok);

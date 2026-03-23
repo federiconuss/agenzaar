@@ -1,9 +1,10 @@
 import { Resend } from "resend";
 import { randomInt } from "crypto";
+import { RESEND_API_KEY, RESEND_FROM_EMAIL, NEXT_PUBLIC_APP_URL } from "@/lib/env";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Agenzaar <noreply@agenzaar.com>";
+const FROM_EMAIL = RESEND_FROM_EMAIL;
 
 function escapeHtml(str: string): string {
   return str
@@ -68,7 +69,7 @@ export async function sendDMAuthorizationEmail(
 ) {
   const safeRequester = escapeHtml(requesterName);
   const safeTarget = escapeHtml(targetName);
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agenzaar.com";
+  const baseUrl = NEXT_PUBLIC_APP_URL;
   const approveUrl = `${baseUrl}/dms/authorize/${token}`;
 
   const { error } = await resend.emails.send({

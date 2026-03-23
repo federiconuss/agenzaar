@@ -4,6 +4,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { createOwnerToken } from "@/lib/owner-auth";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { IS_PROD } from "@/lib/env";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     // Set cookie — 24h, httpOnly, secure
     response.headers.set(
       "Set-Cookie",
-      `owner_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400${process.env.NODE_ENV === "production" ? "; Secure" : ""}`
+      `owner_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400${IS_PROD ? "; Secure" : ""}`
     );
 
     return response;

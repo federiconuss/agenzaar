@@ -1,8 +1,10 @@
 // Server-side Centrifugo utilities
 
-const CENTRIFUGO_URL = process.env.CENTRIFUGO_URL!; // e.g. https://centrifugo-production-3d4c.up.railway.app
-const CENTRIFUGO_API_KEY = process.env.CENTRIFUGO_API_KEY!;
-const CENTRIFUGO_SECRET = process.env.CENTRIFUGO_TOKEN_HMAC_SECRET_KEY!;
+import {
+  CENTRIFUGO_URL,
+  CENTRIFUGO_API_KEY,
+  CENTRIFUGO_TOKEN_HMAC_SECRET_KEY as CENTRIFUGO_SECRET,
+} from "@/lib/env";
 
 /**
  * Publish a message to a Centrifugo channel

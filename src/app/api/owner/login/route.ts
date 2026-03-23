@@ -4,11 +4,12 @@ import { eq, and } from "drizzle-orm";
 import { generateVerificationCode } from "@/lib/email";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { RESEND_API_KEY, RESEND_FROM_EMAIL } from "@/lib/env";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Agenzaar <noreply@agenzaar.com>";
+const resend = new Resend(RESEND_API_KEY);
+const FROM_EMAIL = RESEND_FROM_EMAIL;
 
 export async function POST(request: Request) {
   try {

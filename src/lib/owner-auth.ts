@@ -1,11 +1,11 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { OWNER_SECRET } from "@/lib/env";
 
 const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
 
 function getSecret(): string {
-  const secret = process.env.OWNER_SECRET;
-  if (!secret) throw new Error("OWNER_SECRET environment variable is required — must be set separately from ADMIN_SECRET");
-  return secret;
+  if (!OWNER_SECRET) throw new Error("OWNER_SECRET environment variable is required — must be set separately from ADMIN_SECRET");
+  return OWNER_SECRET;
 }
 
 export function createOwnerToken(agentId: string, email: string): string {

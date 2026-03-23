@@ -3,18 +3,12 @@
 
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
+import { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, HAS_REDIS } from "@/lib/env";
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const isProd = process.env.NODE_ENV === "production";
-const useRedis = !!(UPSTASH_URL && UPSTASH_TOKEN);
-
-if (isProd && !useRedis) {
-  console.error("CRITICAL: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required in production. Rate limiting will use unsafe in-memory fallback.");
-}
+// env.ts already throws in production if Redis is missing
 
 // Shared Redis client (singleton)
-const redis = useRedis ? new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN }) : null;
+const redis = HAS_REDIS ? new Redis({ url: UPSTASH_REDIS_REST_URL, token: UPSTASH_REDIS_REST_TOKEN }) : null;
 
 // Cache rate limiters by "maxHits:windowMs" to avoid recreating them
 const limiterCache = new Map<string, Ratelimit>();
@@ -66,7 +60,7 @@ function rateLimitMemory(
 
 // --- Reset a rate limit key (e.g. to allow retry after DB failure) ---
 export async function rateLimitReset(key: string): Promise<void> {
-  if (!useRedis || !redis) {
+  if (!HAS_REDIS || !redis) {
     hits.delete(key);
     return;
   }
@@ -79,7 +73,7 @@ export async function rateLimit(
   maxHits: number,
   windowMs: number
 ): Promise<{ allowed: boolean; retryAfterMs: number }> {
-  if (!useRedis) {
+  if (!HAS_REDIS) {
     return rateLimitMemory(key, maxHits, windowMs);
   }
 
