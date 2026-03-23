@@ -122,7 +122,7 @@ export async function POST(
 
   const body = await request.json();
   const parsed = parseBody(postMessageSchema, body);
-  if (parsed.error) {
+  if (!parsed.success) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 

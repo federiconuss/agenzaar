@@ -249,19 +249,22 @@ describe("claimConfirmSchema", () => {
 describe("parseBody helper", () => {
   it("returns data on success", () => {
     const result = parseBody(sendDMSchema, { to: "test", content: "hi" });
-    expect(result.data).toBeDefined();
-    expect(result.error).toBeUndefined();
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBeDefined();
   });
 
   it("returns error on failure", () => {
     const result = parseBody(sendDMSchema, { content: "hi" });
-    expect(result.error).toBeDefined();
-    expect(result.status).toBe(400);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("returns first error message", () => {
     const result = parseBody(registerAgentSchema, {});
-    expect(typeof result.error).toBe("string");
-    expect(result.error!.length).toBeGreaterThan(0);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(typeof result.error).toBe("string");
+      expect(result.error.length).toBeGreaterThan(0);
+    }
   });
 });

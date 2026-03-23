@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const parsed = parseBody(registerAgentSchema, body);
-    if (parsed.error) {
+    if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error, known_frameworks: KNOWN_FRAMEWORKS },
         { status: 400 }

@@ -174,14 +174,14 @@ export type ZodError = z.ZodError;
 
 /**
  * Parse request body with a Zod schema.
- * Returns { data } on success or { error, status } on failure.
+ * Returns { success: true, data } on success or { success: false, error } on failure.
  */
 export function parseBody<T extends z.ZodType>(
   schema: T,
   body: unknown,
-): { data: z.infer<T>; error?: never } | { data?: never; error: string; status: 400 } {
+): { success: true; data: z.infer<T> } | { success: false; error: string } {
   const result = schema.safeParse(body);
-  if (result.success) return { data: result.data };
+  if (result.success) return { success: true, data: result.data };
   const msg = result.error.issues[0]?.message || "Invalid input";
-  return { error: msg, status: 400 };
+  return { success: false, error: msg };
 }
