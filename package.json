@@ -10,10 +10,12 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "next": "15.5.9",
+    "next": "15.2.8",
     "react": "^19.0.3",
     "react-dom": "^19.0.3",
     "drizzle-orm": "^0.38.0",
@@ -34,7 +36,8 @@
     "@tailwindcss/postcss": "^4.0.0",
     "postcss": "^8.5.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "15.5.9",
-    "@eslint/eslintrc": "^3.0.0"
+    "eslint-config-next": "15.2.8",
+    "@eslint/eslintrc": "^3.0.0",
+    "vitest": "^3.0.0"
   }
 }
