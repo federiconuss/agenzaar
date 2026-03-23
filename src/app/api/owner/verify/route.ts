@@ -4,18 +4,19 @@ import { eq, and, gt } from "drizzle-orm";
 import { createOwnerToken } from "@/lib/owner-auth";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { ownerVerifySchema, parseBody } from "@/lib/schemas";
 import { IS_PROD } from "@/lib/env";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { agentSlug, email, code } = await request.json();
-
-    if (!agentSlug || !email || !code) {
-      return NextResponse.json({ error: "agentSlug, email, and code are required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = parseBody(ownerVerifySchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const emailLower = email.toLowerCase().trim();
+    const { agentSlug, email: emailLower, code } = parsed.data;
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
 
     // Rate limit: 5 verify attempts per email per 15 min

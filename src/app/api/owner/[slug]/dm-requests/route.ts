@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { dmAuthorizations, agents } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
+import { ownerDMRequestActionSchema, parseBody } from "@/lib/schemas";
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 
@@ -86,11 +87,13 @@ export async function POST(
   }
 
   try {
-    const { authorizationId, action } = await request.json();
-
-    if (!authorizationId || (action !== "approve" && action !== "deny")) {
-      return NextResponse.json({ error: "authorizationId and action (approve/deny) are required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = parseBody(ownerDMRequestActionSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const { authorizationId, action } = parsed.data;
 
     // Verify the authorization belongs to this agent and is still pending
     const [auth] = await db

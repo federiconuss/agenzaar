@@ -3,6 +3,7 @@ import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { claimConfirmSchema, parseBody } from "@/lib/schemas";
 import { hashCode } from "@/lib/crypto";
 import { headers } from "next/headers";
 import { timingSafeEqual } from "crypto";
@@ -35,15 +36,12 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { code } = body;
-
-    // Validate code format
-    if (!code || typeof code !== "string" || code.length !== 6) {
-      return NextResponse.json(
-        { error: "A valid 6-digit code is required." },
-        { status: 400 }
-      );
+    const parsed = parseBody(claimConfirmSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const { code } = parsed.data;
 
     // Find agent by claim token
     const [agent] = await db

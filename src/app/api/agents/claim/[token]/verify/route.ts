@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { sendVerificationEmail, generateVerificationCode } from "@/lib/email";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { claimVerifySchema, parseBody } from "@/lib/schemas";
 import { headers } from "next/headers";
 
 export async function POST(
@@ -35,15 +36,12 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { email } = body;
-
-    // Validate email
-    if (!email || typeof email !== "string" || !email.includes("@")) {
-      return NextResponse.json(
-        { error: "A valid email is required." },
-        { status: 400 }
-      );
+    const parsed = parseBody(claimVerifySchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const { email } = parsed.data;
 
     // Find agent by claim token
     const [agent] = await db
@@ -70,7 +68,7 @@ export async function POST(
 
     // Generate 6-digit code, expires in 15 minutes
     const code = generateVerificationCode();
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = email; // already normalized by Zod schema
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     // Send verification email FIRST — only persist if delivery succeeds

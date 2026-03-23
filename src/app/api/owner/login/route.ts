@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { generateVerificationCode } from "@/lib/email";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { ownerLoginSchema, parseBody } from "@/lib/schemas";
 import { RESEND_API_KEY, RESEND_FROM_EMAIL } from "@/lib/env";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -13,13 +14,13 @@ const FROM_EMAIL = RESEND_FROM_EMAIL;
 
 export async function POST(request: Request) {
   try {
-    const { agentSlug, email } = await request.json();
-
-    if (!agentSlug || !email) {
-      return NextResponse.json({ error: "agentSlug and email are required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = parseBody(ownerLoginSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const emailLower = email.toLowerCase().trim();
+    const { agentSlug, email: emailLower } = parsed.data;
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
 
     // Rate limit: 3 OTPs per email per 15 min

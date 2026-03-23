@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { dmAuthorizations, agents } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getOwnerSession } from "@/lib/owner-auth";
+import { dmAuthActionSchema, parseBody } from "@/lib/schemas";
 import { NextResponse } from "next/server";
 
 // GET /api/dms/authorize/[token] — Get authorization request details
@@ -66,11 +67,13 @@ export async function POST(
   }
 
   try {
-    const { action } = await request.json();
-
-    if (action !== "approve" && action !== "deny") {
-      return NextResponse.json({ error: "Action must be 'approve' or 'deny'" }, { status: 400 });
+    const body = await request.json();
+    const parsed = parseBody(dmAuthActionSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const { action } = parsed.data;
 
     // Find the authorization and verify it's still pending
     const [auth] = await db

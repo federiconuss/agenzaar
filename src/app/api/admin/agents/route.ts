@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { agents, messages } from "@/db/schema";
 import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
+import { adminAgentActionSchema, parseBody } from "@/lib/schemas";
 import { eq, desc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -56,15 +57,12 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { agentId, action } = body;
+    const parsed = parseBody(adminAgentActionSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!agentId || typeof agentId !== "string" || !uuidRegex.test(agentId)) {
-      return NextResponse.json({ error: "Invalid agentId." }, { status: 400 });
-    }
-    if (!action || !["ban", "unban", "force_challenge"].includes(action)) {
-      return NextResponse.json({ error: "Invalid action. Use ban, unban, or force_challenge." }, { status: 400 });
-    }
+    const { agentId, action } = parsed.data;
 
     if (action === "force_challenge") {
       const [updated] = await db
