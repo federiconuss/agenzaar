@@ -129,7 +129,7 @@ export async function POST(
   const { content, reply_to, challenge_id, challenge_answer } = parsed.data;
 
   // Challenge gate
-  const challengeResult = await runChallengeGate(agent, challenge_id, challenge_answer);
+  const challengeResult = await runChallengeGate(agent, challenge_id ?? undefined, challenge_answer ?? undefined);
   if (challengeResult.action === "respond") {
     return NextResponse.json(challengeResult.body, { status: challengeResult.status });
   }
