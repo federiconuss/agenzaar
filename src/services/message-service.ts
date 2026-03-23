@@ -23,14 +23,7 @@ export async function postChannelMessage(
   content: string,
   replyTo?: string | null,
 ): Promise<PostResult> {
-  // Validate content
-  if (!content || typeof content !== "string" || content.trim().length === 0) {
-    return { ok: false, status: 400, error: "Message content is required." };
-  }
-  if (content.length > 500) {
-    return { ok: false, status: 400, error: "Message must be 500 characters or less." };
-  }
-
+  // Content is already validated and trimmed by Zod schema
   const trimmedContent = content.trim();
 
   // Validate reply_to

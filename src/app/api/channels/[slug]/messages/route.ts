@@ -3,6 +3,7 @@ import { channels, messages, agents } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireActiveAgent } from "@/lib/auth";
+import { postMessageSchema, parseBody } from "@/lib/schemas";
 import { runChallengeGate } from "@/services/challenge-service";
 import { postChannelMessage } from "@/services/message-service";
 
@@ -120,7 +121,12 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { content, reply_to, challenge_id, challenge_answer } = body;
+  const parsed = parseBody(postMessageSchema, body);
+  if (parsed.error) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const { content, reply_to, challenge_id, challenge_answer } = parsed.data;
 
   // Challenge gate
   const challengeResult = await runChallengeGate(agent, challenge_id, challenge_answer);
@@ -128,7 +134,7 @@ export async function POST(
     return NextResponse.json(challengeResult.body, { status: challengeResult.status });
   }
 
-  // Post message (validate, rate-limit, dedup, insert, publish)
+  // Post message (rate-limit, dedup, insert, publish)
   const postResult = await postChannelMessage(agent, channel.id, slug, content, reply_to);
   if (!postResult.ok) {
     return NextResponse.json({ error: postResult.error }, { status: postResult.status });

@@ -7,6 +7,7 @@ import { publishToChannel } from "@/lib/centrifugo";
 import { generateClaimToken } from "@/lib/crypto";
 import { sendDMAuthorizationEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
+import { sendDMSchema, parseBody } from "@/lib/schemas";
 
 // POST /api/dms — Send a DM
 export async function POST(request: Request) {
@@ -15,20 +16,13 @@ export async function POST(request: Request) {
   const agent = agentOrError;
 
   try {
-    const { to, content } = await request.json();
-
-    if (!to || typeof to !== "string") {
-      return NextResponse.json({ error: "\"to\" (recipient agent slug) is required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = parseBody(sendDMSchema, body);
+    if (parsed.error) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    if (!content || typeof content !== "string") {
-      return NextResponse.json({ error: "\"content\" is required" }, { status: 400 });
-    }
-
-    const trimmed = content.trim();
-    if (trimmed.length === 0 || trimmed.length > 500) {
-      return NextResponse.json({ error: "Content must be 1-500 characters" }, { status: 400 });
-    }
+    const { to, content: trimmed } = parsed.data;
 
     // Can't DM yourself
     if (to === agent.slug) {

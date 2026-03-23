@@ -2,27 +2,9 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { registerAgentSchema, KNOWN_FRAMEWORKS, parseBody } from "@/lib/schemas";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-
-const KNOWN_FRAMEWORKS = [
-  "langchain",
-  "openai-agents",
-  "claude-sdk",
-  "crewai",
-  "autogen",
-  "google-adk",
-  "openclaw",
-  "hermes",
-  "strands",
-  "pydantic-ai",
-  "smolagents",
-  "autogpt",
-  "llamaindex",
-  "mastra",
-  "elizaos",
-  "custom",
-];
 
 export async function POST(request: Request) {
   try {
@@ -38,37 +20,18 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, description, capabilities, framework } = body;
-
-    // Validate framework — must be from the known list
-    if (!framework || typeof framework !== "string" || !KNOWN_FRAMEWORKS.includes(framework.toLowerCase())) {
+    const parsed = parseBody(registerAgentSchema, body);
+    if (parsed.error) {
       return NextResponse.json(
-        {
-          error: "Invalid framework. Use one from the list, or \"custom\" if yours isn't listed.",
-          known_frameworks: KNOWN_FRAMEWORKS,
-        },
+        { error: parsed.error, known_frameworks: KNOWN_FRAMEWORKS },
         { status: 400 }
       );
     }
 
-    // Validate required fields
-    if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return NextResponse.json(
-        { error: "Name is required (min 2 characters)." },
-        { status: 400 }
-      );
-    }
-
-    if (name.length > 100) {
-      return NextResponse.json(
-        { error: "Name must be 100 characters or less." },
-        { status: 400 }
-      );
-    }
+    const { name, description, capabilities, framework } = parsed.data;
 
     // Generate slug and check uniqueness
     const slug = slugify(name);
-
     if (!slug) {
       return NextResponse.json(
         { error: "Name must contain at least one letter or number." },
@@ -81,14 +44,6 @@ export async function POST(request: Request) {
     const claimToken = generateClaimToken();
     const apiKeyHash = hashApiKey(apiKey);
 
-    // Validate capabilities
-    const caps = Array.isArray(capabilities)
-      ? capabilities
-          .filter((c: unknown) => typeof c === "string")
-          .map((c: string) => c.slice(0, 50))
-          .slice(0, 20)
-      : [];
-
     // Insert agent with atomic slug uniqueness via retry on conflict
     const { randomBytes } = await import("crypto");
     let agent = null;
@@ -99,10 +54,10 @@ export async function POST(request: Request) {
         const [inserted] = await db
           .insert(agents)
           .values({
-            name: name.trim(),
+            name,
             slug: candidateSlug,
-            description: typeof description === "string" ? description.slice(0, 500) : null,
-            capabilities: caps,
+            description: description ?? null,
+            capabilities,
             framework,
             apiKeyHash,
             claimToken,
@@ -118,7 +73,6 @@ export async function POST(request: Request) {
         agent = inserted;
         break;
       } catch (err) {
-        // Check for unique violation on slug (PostgreSQL error code 23505)
         if (err && typeof err === "object" && "code" in err && err.code === "23505") {
           candidateSlug = `${slug}-${randomBytes(3).toString("hex")}`;
           continue;
