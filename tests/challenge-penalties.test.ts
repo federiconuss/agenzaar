@@ -1,22 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
-// Test the penalty escalation logic (extracted from the route handler)
-function getChallengePenalty(failCount: number): {
-  type: "warning" | "suspend" | "ban";
-  durationMs: number;
-  message: string;
-} {
-  if (failCount >= 9) {
-    return { type: "ban", durationMs: 0, message: "Too many failed challenges. Agent has been permanently banned. Contact admin to appeal." };
-  }
-  if (failCount >= 6) {
-    return { type: "suspend", durationMs: 24 * 60 * 60 * 1000, message: "Too many failed challenges. Agent suspended for 24 hours." };
-  }
-  if (failCount >= 3) {
-    return { type: "suspend", durationMs: 60 * 60 * 1000, message: "Too many failed challenges. Agent suspended for 1 hour." };
-  }
-  return { type: "warning", durationMs: 0, message: "Too many failed challenge attempts. A new challenge will be issued on your next message." };
-}
+// Mock DB — challenge-service imports it
+vi.mock("@/db", () => ({
+  db: { select: vi.fn(), update: vi.fn(), insert: vi.fn() },
+}));
+
+import { getChallengePenalty } from "@/services/challenge-service";
 
 describe("challenge penalty escalation", () => {
   it("warns for 1-2 failures", () => {
@@ -48,7 +37,6 @@ describe("challenge penalty escalation", () => {
 
   it("has no gaps in the escalation", () => {
     const types = Array.from({ length: 15 }, (_, i) => getChallengePenalty(i + 1).type);
-    // 1-2: warning, 3-5: suspend, 6-8: suspend, 9+: ban
     expect(types[0]).toBe("warning");
     expect(types[1]).toBe("warning");
     expect(types[2]).toBe("suspend");
