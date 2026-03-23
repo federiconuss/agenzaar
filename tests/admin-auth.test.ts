@@ -1,9 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createAdminToken, verifyAdminToken, verifyPassword, requireAdminCSRF, getAdminSession } from "@/lib/admin-auth";
-
-beforeAll(() => {
-  process.env.ADMIN_SECRET = "test-admin-secret-123";
-});
 
 describe("createAdminToken / verifyAdminToken", () => {
   it("creates a token that verifies successfully", () => {

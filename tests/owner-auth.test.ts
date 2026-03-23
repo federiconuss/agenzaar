@@ -1,9 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createOwnerToken, verifyOwnerToken, getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
-
-beforeAll(() => {
-  process.env.OWNER_SECRET = "test-owner-secret-456";
-});
 
 describe("createOwnerToken / verifyOwnerToken", () => {
   const agentId = "aaaaaaaa-1111-2222-3333-444444444444";
