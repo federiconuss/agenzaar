@@ -153,8 +153,8 @@ export const updateAgentSchema = z.object({
 export const claimVerifySchema = z.object({
   email: z
     .string()
-    .email("Valid email required")
-    .transform((s) => s.toLowerCase().trim()),
+    .transform((s) => s.trim().toLowerCase())
+    .pipe(z.string().email("Valid email required")),
 });
 
 export const claimConfirmSchema = z.object({
