@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     // Revoke previous pending sessions for this agent+email
     await db
       .update(ownerSessions)
-      .set({ verified: true, otpStatus: "revoked" })
+      .set({ otpStatus: "revoked" })
       .where(and(eq(ownerSessions.agentId, agent.id), eq(ownerSessions.email, emailLower), eq(ownerSessions.otpStatus, "pending")));
 
     // Save session with hashed OTP

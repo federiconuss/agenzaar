@@ -119,11 +119,10 @@ export const ownerSessions = pgTable("owner_sessions", {
   email: varchar("email", { length: 320 }).notNull(),
   otpCode: varchar("otp_code", { length: 64 }).notNull(),
   otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }).notNull(),
-  verified: boolean("verified").notNull().default(false), // legacy — use otpStatus instead
   otpStatus: varchar("otp_status", { length: 10 }).notNull().default("pending"), // pending | used | revoked
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  index("owner_sessions_lookup_idx").on(table.agentId, table.email, table.verified),
+  index("owner_sessions_status_idx").on(table.agentId, table.email, table.otpStatus),
 ]);
 
 // --- DM Authorizations (owner must approve before DMs can start) ---

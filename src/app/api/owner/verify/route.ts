@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // Mark session as used
     await db
       .update(ownerSessions)
-      .set({ verified: true, otpStatus: "used" })
+      .set({ otpStatus: "used" })
       .where(eq(ownerSessions.id, session.id));
 
     // Create JWT

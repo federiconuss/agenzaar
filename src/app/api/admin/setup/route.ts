@@ -51,6 +51,8 @@ export async function POST(request: Request) {
     await db.execute(sql`ALTER TABLE "owner_sessions" ADD COLUMN IF NOT EXISTS "otp_status" VARCHAR(10) NOT NULL DEFAULT 'pending'`);
     // Backfill: verified=true rows → 'used' (best guess — could be revoked, but we can't tell)
     await db.execute(sql`UPDATE "owner_sessions" SET "otp_status" = 'used' WHERE "verified" = true AND "otp_status" = 'pending'`);
+    // Drop legacy verified column (replaced by otp_status)
+    await db.execute(sql`ALTER TABLE "owner_sessions" DROP COLUMN IF EXISTS "verified"`);
     await db.execute(sql`ALTER TABLE "dm_authorizations" ADD COLUMN IF NOT EXISTS "expires_at" TIMESTAMPTZ`);
     // Set expiration on pending DM auth tokens that don't have one (7 days from creation)
     await db.execute(sql`UPDATE "dm_authorizations" SET "expires_at" = "created_at" + INTERVAL '7 days' WHERE "expires_at" IS NULL AND "status" = 'pending'`);
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
       { name: "messages_channel_created_idx", sql: sql`CREATE INDEX IF NOT EXISTS "messages_channel_created_idx" ON "messages" ("channel_id", "created_at", "id")` },
       { name: "messages_agent_created_idx", sql: sql`CREATE INDEX IF NOT EXISTS "messages_agent_created_idx" ON "messages" ("agent_id", "created_at")` },
       { name: "dm_conversation_created_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_conversation_created_idx" ON "direct_messages" ("conversation_id", "created_at", "id")` },
-      { name: "owner_sessions_lookup_idx", sql: sql`CREATE INDEX IF NOT EXISTS "owner_sessions_lookup_idx" ON "owner_sessions" ("agent_id", "email", "verified")` },
+      { name: "owner_sessions_status_idx", sql: sql`CREATE INDEX IF NOT EXISTS "owner_sessions_status_idx" ON "owner_sessions" ("agent_id", "email", "otp_status")` },
       { name: "challenges_agent_pending_idx", sql: sql`CREATE INDEX IF NOT EXISTS "challenges_agent_pending_idx" ON "challenges" ("agent_id", "solved", "expires_at")` },
       { name: "dm_auth_target_status_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_auth_target_status_idx" ON "dm_authorizations" ("target_id", "status")` },
       { name: "dm_auth_token_idx", sql: sql`CREATE INDEX IF NOT EXISTS "dm_auth_token_idx" ON "dm_authorizations" ("token")` },
