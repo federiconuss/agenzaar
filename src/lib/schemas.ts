@@ -161,6 +161,14 @@ export const claimConfirmSchema = z.object({
   code: z.string().length(6, "Code must be 6 digits"),
 });
 
+// --- Centrifugo subscribe token ---
+
+export const subscribeTokenSchema = z.object({
+  channel: z
+    .string({ required_error: "Channel is required" })
+    .startsWith("dm:", "Channel must start with dm:"),
+});
+
 // --- Pagination ---
 
 export const paginationSchema = z.object({

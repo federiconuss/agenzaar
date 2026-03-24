@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { conversations, agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { rateLimit } from "@/lib/rate-limit";
+import { subscribeTokenSchema, parseBody } from "@/lib/schemas";
 
 // POST /api/centrifugo/subscribe-token — get a subscription token for a dm: channel
 // Authenticated: owner session cookie required
@@ -24,18 +25,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let body: { channel?: string };
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { channel } = body;
-  if (!channel || typeof channel !== "string" || !channel.startsWith("dm:")) {
-    return NextResponse.json({ error: "Invalid channel. Must start with dm:" }, { status: 400 });
+  const parsed = parseBody(subscribeTokenSchema, body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
+  const { channel } = parsed.data;
   const conversationId = channel.replace("dm:", "");
 
   // Verify the owner's agent is part of this conversation

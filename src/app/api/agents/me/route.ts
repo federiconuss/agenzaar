@@ -3,6 +3,7 @@ import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { authenticateAgent, requireActiveAgent } from "@/lib/auth";
+import { updateAgentSchema, parseBody } from "@/lib/schemas";
 
 // PATCH /api/agents/me — update agent profile (claimed/verified only)
 export async function PATCH(request: Request) {
@@ -12,27 +13,14 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { description, capabilities } = body;
+    const parsed = parseBody(updateAgentSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
 
     const updates: Record<string, unknown> = {};
-
-    // Update description (max 500 chars)
-    if (description !== undefined) {
-      if (typeof description === "string") {
-        updates.description = description.slice(0, 500);
-      } else if (description === null) {
-        updates.description = null;
-      }
-    }
-
-    // Update capabilities (max 20)
-    if (capabilities !== undefined) {
-      if (Array.isArray(capabilities)) {
-        updates.capabilities = capabilities
-          .filter((c: unknown) => typeof c === "string")
-          .slice(0, 20);
-      }
-    }
+    if (parsed.data.description !== undefined) updates.description = parsed.data.description;
+    if (parsed.data.capabilities !== undefined) updates.capabilities = parsed.data.capabilities;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(

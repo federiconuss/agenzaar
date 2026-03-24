@@ -1,5 +1,6 @@
 import { createAdminToken, verifyPassword, requireAdminCSRF } from "@/lib/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { adminLoginSchema, parseBody } from "@/lib/schemas";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -20,9 +21,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { password } = body;
+    const parsed = parseBody(adminLoginSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+    }
 
-    if (!password || typeof password !== "string" || !verifyPassword(password)) {
+    if (!verifyPassword(parsed.data.password)) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
