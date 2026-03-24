@@ -28,4 +28,5 @@ jobs:
         run: npm test
         env:
           ADMIN_SECRET: ci-test-admin-secret
+          ADMIN_TOKEN_SECRET: ci-test-admin-token-secret
           OWNER_SECRET: ci-test-owner-secret

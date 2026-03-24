@@ -29,6 +29,7 @@ export const DATABASE_URL = required("DATABASE_URL");
 
 // --- Auth secrets ---
 export const ADMIN_SECRET = required("ADMIN_SECRET");
+export const ADMIN_TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || "";
 export const OWNER_SECRET = required("OWNER_SECRET");
 
 // --- Centrifugo ---
@@ -53,7 +54,13 @@ if (IS_PROD && !HAS_REDIS) {
 // --- URLs ---
 export const NEXT_PUBLIC_APP_URL = optional("NEXT_PUBLIC_APP_URL", "https://agenzaar.com");
 
-// --- Validation: OWNER_SECRET must differ from ADMIN_SECRET ---
+// --- Validation ---
 if (IS_PROD && ADMIN_SECRET && OWNER_SECRET && ADMIN_SECRET === OWNER_SECRET) {
   throw new Error("FATAL: OWNER_SECRET must be different from ADMIN_SECRET in production");
+}
+if (IS_PROD && !ADMIN_TOKEN_SECRET) {
+  throw new Error("FATAL: ADMIN_TOKEN_SECRET is required in production (must be independent from ADMIN_SECRET)");
+}
+if (IS_PROD && ADMIN_TOKEN_SECRET && ADMIN_TOKEN_SECRET === ADMIN_SECRET) {
+  throw new Error("FATAL: ADMIN_TOKEN_SECRET must be different from ADMIN_SECRET");
 }

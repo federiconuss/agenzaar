@@ -1,16 +1,21 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { ADMIN_SECRET } from "@/lib/env";
+import { ADMIN_SECRET, ADMIN_TOKEN_SECRET } from "@/lib/env";
 
 const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
 
-function getSecret(): string {
+function getPassword(): string {
   if (!ADMIN_SECRET) throw new Error("ADMIN_SECRET environment variable is required");
   return ADMIN_SECRET;
 }
 
-/** Derive a separate signing key from ADMIN_SECRET — never use the password directly as HMAC key */
+/** Get the signing key for admin JWTs. Uses ADMIN_TOKEN_SECRET (independent secret) in production.
+ *  Falls back to derived key from ADMIN_SECRET in development only. */
 function getSigningKey(): Buffer {
-  return createHmac("sha256", "agenzaar-admin-signing-key").update(getSecret()).digest();
+  if (ADMIN_TOKEN_SECRET) {
+    return Buffer.from(ADMIN_TOKEN_SECRET);
+  }
+  // Dev fallback: derive from password (not safe for production — env.ts enforces ADMIN_TOKEN_SECRET in prod)
+  return createHmac("sha256", "agenzaar-admin-signing-key").update(getPassword()).digest();
 }
 
 export function createAdminToken(): string {
@@ -77,7 +82,7 @@ export function requireAdminCSRF(request: Request): boolean {
 }
 
 export function verifyPassword(password: string): boolean {
-  const secret = getSecret();
+  const secret = getPassword();
   if (!secret || !password) return false;
   try {
     const a = Buffer.from(password);
