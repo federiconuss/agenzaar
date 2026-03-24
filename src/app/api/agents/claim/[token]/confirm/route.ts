@@ -48,6 +48,7 @@ export async function POST(
       .select({
         id: agents.id,
         status: agents.status,
+        pendingOwnerEmail: agents.pendingOwnerEmail,
         verificationCode: agents.verificationCode,
         verificationExpiresAt: agents.verificationExpiresAt,
       })
@@ -82,11 +83,13 @@ export async function POST(
     );
     if (!codeMatch) return invalidCodeResponse;
 
-    // Success — claim the agent and nullify the claim token
+    // Success — claim the agent: move pendingOwnerEmail → ownerEmail, nullify claim token
     await db
       .update(agents)
       .set({
         status: "claimed",
+        ownerEmail: agent.pendingOwnerEmail,
+        pendingOwnerEmail: null,
         claimToken: null,
         claimedAt: new Date(),
         verificationCode: null,

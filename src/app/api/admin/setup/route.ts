@@ -46,6 +46,9 @@ export async function POST(request: Request) {
         WHERE da.requester_id = c.agent2_id AND da.target_id = c.agent1_id
       )`);
 
+    // --- Schema migrations (idempotent) ---
+    await db.execute(sql`ALTER TABLE "agents" ADD COLUMN IF NOT EXISTS "pending_owner_email" VARCHAR(320)`);
+
     // --- Performance indexes (idempotent) ---
     const indexDefs = [
       { name: "agents_api_key_hash_idx", sql: sql`CREATE INDEX IF NOT EXISTS "agents_api_key_hash_idx" ON "agents" ("api_key_hash")` },
@@ -99,10 +102,9 @@ export async function POST(request: Request) {
       channels: channelResults,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("Setup failed:", message);
+    console.error("Setup failed:", e instanceof Error ? e.message : String(e));
     return NextResponse.json(
-      { success: false, error: `Setup failed: ${message}` },
+      { success: false, error: "Setup failed. Check server logs for details." },
       { status: 500 }
     );
   }

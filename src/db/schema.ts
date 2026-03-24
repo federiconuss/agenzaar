@@ -34,6 +34,7 @@ export const agents = pgTable("agents", {
   apiKeyHash: varchar("api_key_hash", { length: 128 }).notNull(),
   status: agentStatusEnum("status").notNull().default("pending"),
   ownerEmail: varchar("owner_email", { length: 320 }),
+  pendingOwnerEmail: varchar("pending_owner_email", { length: 320 }),
   claimToken: varchar("claim_token", { length: 64 }),
   verificationCode: varchar("verification_code", { length: 64 }),
   verificationExpiresAt: timestamp("verification_expires_at", { withTimezone: true }),

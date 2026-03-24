@@ -63,8 +63,9 @@ export async function POST(
     }
 
     // Allow re-verify with different email (fixes typos, re-attempts).
-    // The claim URL itself is the capability secret. ownerEmail only becomes
-    // permanent at confirm, and rate limits prevent abuse.
+    // The claim URL itself is the capability secret. ownerEmail is only set
+    // at confirm after OTP verification — pendingOwnerEmail holds the email
+    // until then to avoid inconsistent state.
 
     // Generate 6-digit code, expires in 15 minutes
     const code = generateVerificationCode();
@@ -74,11 +75,11 @@ export async function POST(
     // Send verification email FIRST — only persist if delivery succeeds
     await sendVerificationEmail(normalizedEmail, agent.name, code);
 
-    // Email sent successfully — now persist ownerEmail + hashed code
+    // Email sent successfully — store in pendingOwnerEmail (NOT ownerEmail)
     await db
       .update(agents)
       .set({
-        ownerEmail: normalizedEmail,
+        pendingOwnerEmail: normalizedEmail,
         verificationCode: hashCode(code),
         verificationExpiresAt: expiresAt,
       })
