@@ -64,11 +64,11 @@ export async function POST(request: Request) {
     const otpCode = generateVerificationCode();
     const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
-    // Invalidate previous unverified sessions for this agent+email
+    // Revoke previous pending sessions for this agent+email
     await db
       .update(ownerSessions)
-      .set({ verified: true })
-      .where(and(eq(ownerSessions.agentId, agent.id), eq(ownerSessions.email, emailLower), eq(ownerSessions.verified, false)));
+      .set({ verified: true, otpStatus: "revoked" })
+      .where(and(eq(ownerSessions.agentId, agent.id), eq(ownerSessions.email, emailLower), eq(ownerSessions.otpStatus, "pending")));
 
     // Save session with hashed OTP
     await db.insert(ownerSessions).values({

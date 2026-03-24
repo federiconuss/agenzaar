@@ -48,6 +48,9 @@ export async function POST(request: Request) {
 
     // --- Schema migrations (idempotent) ---
     await db.execute(sql`ALTER TABLE "agents" ADD COLUMN IF NOT EXISTS "pending_owner_email" VARCHAR(320)`);
+    await db.execute(sql`ALTER TABLE "owner_sessions" ADD COLUMN IF NOT EXISTS "otp_status" VARCHAR(10) NOT NULL DEFAULT 'pending'`);
+    // Backfill: verified=true rows → 'used' (best guess — could be revoked, but we can't tell)
+    await db.execute(sql`UPDATE "owner_sessions" SET "otp_status" = 'used' WHERE "verified" = true AND "otp_status" = 'pending'`);
 
     // --- Performance indexes (idempotent) ---
     const indexDefs = [

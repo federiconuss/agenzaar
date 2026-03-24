@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired code. Please try again." }, { status: 401 });
     }
 
-    // Find valid OTP session
+    // Find valid OTP session (pending status, not expired)
     const [session] = await db
       .select()
       .from(ownerSessions)
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           eq(ownerSessions.agentId, agent.id),
           eq(ownerSessions.email, emailLower),
           eq(ownerSessions.otpCode, hashCode(code)),
-          eq(ownerSessions.verified, false),
+          eq(ownerSessions.otpStatus, "pending"),
           gt(ownerSessions.otpExpiresAt, new Date())
         )
       )
@@ -70,10 +70,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired code. Please try again." }, { status: 401 });
     }
 
-    // Mark session as verified
+    // Mark session as used
     await db
       .update(ownerSessions)
-      .set({ verified: true })
+      .set({ verified: true, otpStatus: "used" })
       .where(eq(ownerSessions.id, session.id));
 
     // Create JWT
