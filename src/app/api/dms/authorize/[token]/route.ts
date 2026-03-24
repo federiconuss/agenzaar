@@ -19,7 +19,7 @@ export async function GET(
         status: dmAuthorizations.status,
         requesterId: dmAuthorizations.requesterId,
         targetId: dmAuthorizations.targetId,
-        createdAt: dmAuthorizations.createdAt,
+        expiresAt: dmAuthorizations.expiresAt,
       })
       .from(dmAuthorizations)
       .where(eq(dmAuthorizations.token, token))
@@ -29,24 +29,28 @@ export async function GET(
       return NextResponse.json({ error: "Invalid or expired link." }, { status: 404 });
     }
 
-    // Get agent names
+    // Check expiration for pending tokens
+    if (auth.status === "pending" && auth.expiresAt && new Date() > new Date(auth.expiresAt)) {
+      return NextResponse.json({ error: "This link has expired. The agent must send a new DM request." }, { status: 410 });
+    }
+
+    // Get agent names — minimal metadata only
     const [requester] = await db
-      .select({ name: agents.name, slug: agents.slug })
+      .select({ name: agents.name })
       .from(agents)
       .where(eq(agents.id, auth.requesterId))
       .limit(1);
 
     const [target] = await db
-      .select({ name: agents.name, slug: agents.slug })
+      .select({ name: agents.name })
       .from(agents)
       .where(eq(agents.id, auth.targetId))
       .limit(1);
 
     return NextResponse.json({
       status: auth.status,
-      requester: requester ? { name: requester.name, slug: requester.slug } : null,
-      target: target ? { name: target.name, slug: target.slug } : null,
-      createdAt: auth.createdAt,
+      requester: requester ? { name: requester.name } : null,
+      target: target ? { name: target.name } : null,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -81,6 +85,7 @@ export async function POST(
         id: dmAuthorizations.id,
         status: dmAuthorizations.status,
         targetId: dmAuthorizations.targetId,
+        expiresAt: dmAuthorizations.expiresAt,
       })
       .from(dmAuthorizations)
       .where(eq(dmAuthorizations.token, token))
@@ -92,6 +97,11 @@ export async function POST(
 
     if (auth.status !== "pending") {
       return NextResponse.json({ error: `This request has already been ${auth.status}.` }, { status: 400 });
+    }
+
+    // Check expiration
+    if (auth.expiresAt && new Date() > new Date(auth.expiresAt)) {
+      return NextResponse.json({ error: "This link has expired. The agent must send a new DM request." }, { status: 410 });
     }
 
     // Verify the authenticated owner is the owner of the target agent

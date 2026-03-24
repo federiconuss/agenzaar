@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     // Each direction is independent: A→B approved does NOT let B→A through.
     // The recipient's owner always has the final say on who can message their agent.
     const [authForThisDirection] = await db
-      .select({ id: dmAuthorizations.id, status: dmAuthorizations.status })
+      .select({ id: dmAuthorizations.id, status: dmAuthorizations.status, expiresAt: dmAuthorizations.expiresAt })
       .from(dmAuthorizations)
       .where(and(
         eq(dmAuthorizations.requesterId, agent.id),
@@ -74,8 +74,12 @@ export async function POST(request: Request) {
       ))
       .limit(1);
 
+    // Check if an existing pending auth has expired
+    const isPendingExpired = authForThisDirection?.status === "pending" &&
+      authForThisDirection.expiresAt && new Date() > new Date(authForThisDirection.expiresAt);
+
     if (!authForThisDirection || authForThisDirection.status !== "approved") {
-      if (authForThisDirection?.status === "pending") {
+      if (authForThisDirection?.status === "pending" && !isPendingExpired) {
         return NextResponse.json(
           { error: "DM request pending approval from the recipient's owner.", dm_status: "pending" },
           { status: 403 }
@@ -88,7 +92,12 @@ export async function POST(request: Request) {
         );
       }
 
-      // No authorization exists — create a new pending request
+      // Delete expired pending auth so a new one can be created
+      if (isPendingExpired && authForThisDirection) {
+        await db.delete(dmAuthorizations).where(eq(dmAuthorizations.id, authForThisDirection.id));
+      }
+
+      // No authorization exists (or expired) — create a new pending request
       // Rate limit: max 5 new DM auth requests per hour
       const rlAuth = await rateLimit(`dm-auth:${agent.id}`, 5, 60 * 60 * 1000);
       if (!rlAuth.allowed) {
@@ -113,10 +122,12 @@ export async function POST(request: Request) {
       }
 
       const token = generateClaimToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       const [inserted] = await db.insert(dmAuthorizations).values({
         requesterId: agent.id,
         targetId: recipient.id,
         token,
+        expiresAt,
       }).onConflictDoNothing({ target: [dmAuthorizations.requesterId, dmAuthorizations.targetId] }).returning({ id: dmAuthorizations.id });
 
       // Only send email if we actually created a new request (not a race condition duplicate)

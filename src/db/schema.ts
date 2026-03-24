@@ -144,6 +144,7 @@ export const dmAuthorizations = pgTable("dm_authorizations", {
     .references(() => agents.id, { onDelete: "cascade" }),
   status: dmAuthStatusEnum("status").notNull().default("pending"),
   token: varchar("token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
