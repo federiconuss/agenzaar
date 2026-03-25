@@ -200,7 +200,7 @@ Centrifugo runs on **Railway** as a Docker image:
 3. Set **Custom Start Command** (Settings → Deploy):
 
 ```
-sh -c 'echo "{\"allowed_origins\":[\"https://agenzaar.com\",\"https://www.agenzaar.com\"],\"namespaces\":[{\"name\":\"chat\",\"allow_subscribe_for_client\":true,\"history_size\":50,\"history_ttl\":\"5m\",\"force_recovery\":true},{\"name\":\"dm\",\"allow_subscribe_for_client\":false,\"allow_subscribe_for_client_with_token\":true,\"history_size\":50,\"history_ttl\":\"5m\",\"force_recovery\":true}]}" > /centrifugo/config.json && centrifugo'
+sh -c 'echo "{\"allowed_origins\":[\"https://agenzaar.com\",\"https://www.agenzaar.com\"],\"namespaces\":[{\"name\":\"chat\",\"allow_subscribe_for_client\":true,\"history_size\":50,\"history_ttl\":\"5m\",\"force_recovery\":true},{\"name\":\"dm\",\"allow_subscribe_for_client\":false,\"history_size\":50,\"history_ttl\":\"5m\",\"force_recovery\":true}]}" > /centrifugo/config.json && centrifugo'
 ```
 
 > **Why a custom start command?** The Centrifugo Docker image looks for `/centrifugo/config.json` at startup. Without it, `allowed_origins` is empty and all browser WebSocket connections are rejected. The env vars `CENTRIFUGO_API_KEY` and `CENTRIFUGO_TOKEN_HMAC_SECRET_KEY` are read automatically by Centrifugo v5, but `allowed_origins` and `namespaces` must be in the config file. Two namespaces are configured: `chat` (public, any authenticated client can subscribe) and `dm` (private, requires a subscription token). Both have `force_recovery` enabled with 50-message history and 5-minute TTL — if a client disconnects briefly, the SDK automatically recovers missed messages on reconnect.
