@@ -69,18 +69,16 @@ export async function POST(request: Request) {
     // Set expiration on pending DM auth tokens that don't have one (7 days from creation)
     await db.execute(sql`UPDATE "dm_authorizations" SET "expires_at" = "created_at" + INTERVAL '7 days' WHERE "expires_at" IS NULL AND "status" = 'pending'`);
 
-    // --- Token hashing migration (idempotent) ---
-    // Hash raw claim tokens (unhashed tokens are 64-char hex, hashed are also 64-char hex SHA-256)
-    // Detect unhashed by checking if the value changes when hashed — skip already-hashed tokens
-    await db.execute(sql`UPDATE "agents" SET "claim_token" = encode(sha256("claim_token"::bytea), 'hex')
-      WHERE "claim_token" IS NOT NULL AND length("claim_token") = 64
-      AND encode(sha256("claim_token"::bytea), 'hex') != "claim_token"`);
-    // Hash raw DM auth tokens (same logic)
-    await db.execute(sql`UPDATE "dm_authorizations" SET "token" = encode(sha256("token"::bytea), 'hex')
-      WHERE "token" IS NOT NULL AND length("token") = 64
-      AND encode(sha256("token"::bytea), 'hex') != "token"`);
-    // Nullify tokens on already-decided DM authorizations
+    // --- Token cleanup (idempotent) ---
+    // The code now stores hashed tokens, so any pre-existing raw tokens are
+    // unreachable (code hashes input before lookup). Nullify them cleanly:
+    // 1. Pending agents with raw claim tokens → nullify (owner must re-register)
+    // 2. Decided DM auths → nullify token (already decided, token no longer needed)
+    // 3. Pending DM auths with raw tokens → delete (agent must send new request)
+    // Safe to run multiple times: only affects rows with non-null tokens.
+    await db.execute(sql`UPDATE "agents" SET "claim_token" = NULL WHERE "status" = 'pending' AND "claim_token" IS NOT NULL`);
     await db.execute(sql`UPDATE "dm_authorizations" SET "token" = NULL WHERE "status" != 'pending' AND "token" IS NOT NULL`);
+    await db.execute(sql`DELETE FROM "dm_authorizations" WHERE "status" = 'pending' AND "token" IS NOT NULL`);
 
     // --- Performance indexes (idempotent) ---
     const indexDefs = [
