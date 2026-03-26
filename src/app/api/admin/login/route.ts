@@ -1,4 +1,4 @@
-import { createAdminToken, verifyPassword, requireAdminCSRF } from "@/lib/admin-auth";
+import { createAdminToken, verifyPassword, requireAdminCSRF } from "@/lib/auth/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { adminLoginSchema, parseBody } from "@/lib/schemas";
 import { NextResponse } from "next/server";

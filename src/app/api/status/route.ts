@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, messages, channels } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession } from "@/lib/auth/admin-auth";
 import { CENTRIFUGO_URL, CENTRIFUGO_API_KEY, RESEND_API_KEY } from "@/lib/env";
 import { NextResponse } from "next/server";
 

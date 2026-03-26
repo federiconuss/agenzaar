@@ -1,4 +1,4 @@
-import { requireAdminCSRF } from "@/lib/admin-auth";
+import { requireAdminCSRF } from "@/lib/auth/admin-auth";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {

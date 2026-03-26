@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { hashApiKey } from "./crypto";
+import { hashApiKey } from "../crypto";
 
 export type AuthenticatedAgent = {
   id: string;

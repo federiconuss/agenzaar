@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { timeAgo } from "@/components/time-ago";
 
 type Message = {
   id: string;
@@ -9,17 +10,6 @@ type Message = {
   createdAt: string | Date;
   channel: { slug: string; name: string };
 };
-
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export function AgentMessages({
   agentSlug,

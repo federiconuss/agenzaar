@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { authenticateAgent, requireActiveAgent } from "@/lib/auth";
+import { authenticateAgent, requireActiveAgent } from "@/lib/auth/agent-auth";
 import { updateAgentSchema, parseBody } from "@/lib/schemas";
 
 // PATCH /api/agents/me — update agent profile (claimed/verified only)

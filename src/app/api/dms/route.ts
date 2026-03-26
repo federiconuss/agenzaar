@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages, dmAuthorizations } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { requireActiveAgent } from "@/lib/auth";
+import { requireActiveAgent } from "@/lib/auth/agent-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
 import { generateClaimToken, hashCode } from "@/lib/crypto";

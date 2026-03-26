@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { channels } from "@/db/schema";
-import { getAdminSession, requireAdminCSRF } from "@/lib/admin-auth";
+import { getAdminSession, requireAdminCSRF } from "@/lib/auth/admin-auth";
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 

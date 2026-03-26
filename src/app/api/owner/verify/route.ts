@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, ownerSessions } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
-import { createOwnerToken } from "@/lib/owner-auth";
+import { createOwnerToken } from "@/lib/auth/owner-auth";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { ownerVerifySchema, parseBody } from "@/lib/schemas";

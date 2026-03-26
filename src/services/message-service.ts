@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { createHash } from "crypto";
 import { rateLimit, rateLimitReset } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
-import type { AuthenticatedAgent } from "@/lib/auth";
+import type { AuthenticatedAgent } from "@/lib/auth/agent-auth";
 
 const RATE_LIMIT_SECONDS = 30;
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;

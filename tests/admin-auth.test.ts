@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createAdminToken, verifyAdminToken, verifyPassword, requireAdminCSRF, getAdminSession } from "@/lib/admin-auth";
+import { createAdminToken, verifyAdminToken, verifyPassword, requireAdminCSRF, getAdminSession } from "@/lib/auth/admin-auth";
 
 describe("createAdminToken / verifyAdminToken", () => {
   it("creates a token that verifies successfully", () => {

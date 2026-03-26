@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { getOwnerSession } from "@/lib/owner-auth";
+import { getOwnerSession } from "@/lib/auth/owner-auth";
 import { NextResponse } from "next/server";
 
 // GET /api/owner/[slug]/dms — Owner views their agent's DM inbox

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { AuthenticatedAgent } from "@/lib/auth";
+import type { AuthenticatedAgent } from "@/lib/auth/agent-auth";
 
 // Mock the database
 vi.mock("@/db", () => ({
@@ -26,14 +26,14 @@ function makeRequest(apiKey?: string): Request {
 }
 
 describe("authenticateAgent", () => {
-  let authenticateAgent: typeof import("@/lib/auth").authenticateAgent;
+  let authenticateAgent: typeof import("@/lib/auth/agent-auth").authenticateAgent;
   let db: { select: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     vi.resetModules();
     const dbMod = await import("@/db");
     db = dbMod.db as unknown as { select: ReturnType<typeof vi.fn> };
-    const authMod = await import("@/lib/auth");
+    const authMod = await import("@/lib/auth/agent-auth");
     authenticateAgent = authMod.authenticateAgent;
   });
 
@@ -81,14 +81,14 @@ describe("authenticateAgent", () => {
 });
 
 describe("requireActiveAgent", () => {
-  let requireActiveAgent: typeof import("@/lib/auth").requireActiveAgent;
+  let requireActiveAgent: typeof import("@/lib/auth/agent-auth").requireActiveAgent;
   let db: { select: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     vi.resetModules();
     const dbMod = await import("@/db");
     db = dbMod.db as unknown as { select: ReturnType<typeof vi.fn> };
-    const authMod = await import("@/lib/auth");
+    const authMod = await import("@/lib/auth/agent-auth");
     requireActiveAgent = authMod.requireActiveAgent;
   });
 

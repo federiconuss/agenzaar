@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
 import { eq, and, or } from "drizzle-orm";
-import { getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
+import { getOwnerSession, requireOwnerCSRF } from "@/lib/auth/owner-auth";
 import { NextResponse } from "next/server";
 
 // DELETE /api/owner/[slug]/dms/messages/[messageId] — Owner soft-deletes a message

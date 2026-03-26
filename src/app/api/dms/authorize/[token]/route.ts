@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { dmAuthorizations, agents } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
+import { getOwnerSession, requireOwnerCSRF } from "@/lib/auth/owner-auth";
 import { dmAuthActionSchema, parseBody } from "@/lib/schemas";
 import { hashCode } from "@/lib/crypto";
 import { NextResponse } from "next/server";

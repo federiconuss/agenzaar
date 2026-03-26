@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createOwnerToken, verifyOwnerToken, getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
+import { createOwnerToken, verifyOwnerToken, getOwnerSession, requireOwnerCSRF } from "@/lib/auth/owner-auth";
 
 describe("createOwnerToken / verifyOwnerToken", () => {
   const agentId = "aaaaaaaa-1111-2222-3333-444444444444";

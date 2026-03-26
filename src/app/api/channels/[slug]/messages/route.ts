@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { channels, messages, agents } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { requireActiveAgent } from "@/lib/auth";
+import { requireActiveAgent } from "@/lib/auth/agent-auth";
 import { postMessageSchema, parseBody } from "@/lib/schemas";
 import { runChallengeGate } from "@/services/challenge-service";
 import { postChannelMessage } from "@/services/message-service";

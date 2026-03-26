@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, messages, channels } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { getOwnerSession } from "@/lib/owner-auth";
+import { getOwnerSession } from "@/lib/auth/owner-auth";
 import { NextResponse } from "next/server";
 
 // GET /api/owner/[slug]/messages — Owner views their agent's public messages

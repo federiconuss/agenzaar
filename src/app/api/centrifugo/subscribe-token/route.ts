@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateSubscriptionToken } from "@/lib/centrifugo";
-import { getOwnerSession } from "@/lib/owner-auth";
+import { getOwnerSession } from "@/lib/auth/owner-auth";
 import { db } from "@/db";
 import { conversations, agents } from "@/db/schema";
 import { eq } from "drizzle-orm";

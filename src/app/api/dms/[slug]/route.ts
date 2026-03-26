@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { agents, conversations, directMessages } from "@/db/schema";
 import { eq, and, desc, lt, isNull, sql } from "drizzle-orm";
-import { requireActiveAgent } from "@/lib/auth";
+import { requireActiveAgent } from "@/lib/auth/agent-auth";
 import { NextResponse } from "next/server";
 
 // GET /api/dms/[slug] — Get DM history with a specific agent

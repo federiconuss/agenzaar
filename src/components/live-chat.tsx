@@ -1,171 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Centrifuge, Subscription } from "centrifuge";
-
-type Message = {
-  id: string;
-  content: string;
-  replyToMessageId: string | null;
-  createdAt: string;
-  agent: {
-    id: string;
-    name: string;
-    slug: string;
-    avatarUrl: string | null;
-  };
-};
+import { useLiveChat, type Message } from "./use-live-chat";
+import { timeAgo } from "./time-ago";
 
 type LiveChatProps = {
   channelSlug: string;
   initialMessages: Message[];
 };
 
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-async function getToken(): Promise<string> {
-  const res = await fetch("/api/centrifugo/token");
-  const data = await res.json();
-  return data.token;
-}
-
 export default function LiveChat({ channelSlug, initialMessages }: LiveChatProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [connected, setConnected] = useState(false);
-  const [newCount, setNewCount] = useState(0);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const [hasOlder, setHasOlder] = useState(initialMessages.length >= 50);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const clientRef = useRef<Centrifuge | null>(null);
-  const subRef = useRef<Subscription | null>(null);
-  const shouldAutoScroll = useRef(true);
-
-  async function loadOlder() {
-    if (loadingOlder || !hasOlder || messages.length === 0) return;
-    setLoadingOlder(true);
-    shouldAutoScroll.current = false;
-
-    // Save scroll position before prepending
-    const container = containerRef.current;
-    const prevScrollHeight = container?.scrollHeight || 0;
-
-    try {
-      const oldestMsg = messages[0];
-      const cursor = oldestMsg.id;
-      const res = await fetch(
-        `/api/channels/${channelSlug}/messages?limit=50&cursor=${cursor}`
-      );
-      const data = await res.json();
-      if (data.messages?.length > 0) {
-        setMessages((prev) => [...data.messages, ...prev]);
-        if (data.messages.length < 50) setHasOlder(false);
-
-        // Restore scroll position after prepending
-        requestAnimationFrame(() => {
-          if (container) {
-            const newScrollHeight = container.scrollHeight;
-            container.scrollTop = newScrollHeight - prevScrollHeight;
-          }
-        });
-      } else {
-        setHasOlder(false);
-      }
-    } finally {
-      setLoadingOlder(false);
-    }
-  }
-
-  const handlePublication = useCallback((ctx: { data: Message }) => {
-    const msg = ctx.data;
-    shouldAutoScroll.current = true;
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === msg.id)) return prev;
-      return [...prev, msg];
-    });
-    setNewCount((c) => c + 1);
-    setTimeout(() => setNewCount((c) => Math.max(0, c - 1)), 3000);
-  }, []);
-
-  // Auto-scroll only for new live messages, not when loading history
-  useEffect(() => {
-    if (shouldAutoScroll.current && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length]);
-
-  // Connect to Centrifugo via SDK
-  useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      try {
-        const res = await fetch("/api/centrifugo/token");
-        if (cancelled) return;
-        const data = await res.json();
-        const { token, url: centrifugoUrl } = data;
-
-        if (!centrifugoUrl || !token) {
-          console.warn("Centrifugo not configured, real-time disabled");
-          return;
-        }
-
-        const wsUrl = centrifugoUrl.replace("https://", "wss://").replace("http://", "ws://");
-
-        const client = new Centrifuge(`${wsUrl}/connection/websocket`, {
-          token,
-          getToken,
-        });
-
-        clientRef.current = client;
-
-        const sub = client.newSubscription(`chat:${channelSlug}`);
-        subRef.current = sub;
-
-        sub.on("publication", handlePublication);
-
-        sub.on("subscribed", () => {
-          if (!cancelled) setConnected(true);
-        });
-
-        sub.on("unsubscribed", () => {
-          if (!cancelled) setConnected(false);
-        });
-
-        client.on("disconnected", () => {
-          if (!cancelled) setConnected(false);
-        });
-
-        sub.subscribe();
-        client.connect();
-      } catch (err) {
-        console.error("Centrifugo connection error:", err);
-      }
-    }
-
-    init();
-
-    return () => {
-      cancelled = true;
-      if (subRef.current) {
-        subRef.current.removeAllListeners();
-        subRef.current.unsubscribe();
-      }
-      if (clientRef.current) {
-        clientRef.current.disconnect();
-      }
-    };
-  }, [channelSlug, handlePublication]);
+  const {
+    messages,
+    connected,
+    newCount,
+    loadingOlder,
+    hasOlder,
+    loadOlder,
+    bottomRef,
+    containerRef,
+  } = useLiveChat(channelSlug, initialMessages);
 
   return (
     <div className="flex flex-col h-full">

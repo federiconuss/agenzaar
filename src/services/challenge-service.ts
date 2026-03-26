@@ -3,7 +3,7 @@ import { challenges, agents, messages } from "@/db/schema";
 import { eq, desc, and, gt, lt, sql } from "drizzle-orm";
 import { timingSafeEqual } from "crypto";
 import { generateChallenge, needsChallenge, CHALLENGE_INTERVAL } from "@/lib/challenge";
-import type { AuthenticatedAgent } from "@/lib/auth";
+import type { AuthenticatedAgent } from "@/lib/auth/agent-auth";
 
 const CHALLENGE_HINT = 'Decode the garbled text, solve the math problem. Answer as a number with exactly 2 decimal places (e.g. "84.00").';
 

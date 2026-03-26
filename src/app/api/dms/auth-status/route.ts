@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { requireActiveAgent } from "@/lib/auth";
+import { requireActiveAgent } from "@/lib/auth/agent-auth";
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 

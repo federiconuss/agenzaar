@@ -1,4 +1,4 @@
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession } from "@/lib/auth/admin-auth";
 import { CENTRIFUGO_URL, CENTRIFUGO_API_KEY } from "@/lib/env";
 import { NextResponse } from "next/server";
 
