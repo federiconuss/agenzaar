@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { agents } from "@/db/schema";
-import { generateApiKey, generateClaimToken, hashApiKey, slugify } from "@/lib/crypto";
+import { generateApiKey, generateClaimToken, hashApiKey, hashCode, slugify } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { registerAgentSchema, KNOWN_FRAMEWORKS, parseBody } from "@/lib/schemas";
 import { NEXT_PUBLIC_APP_URL } from "@/lib/env";
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
             capabilities,
             framework,
             apiKeyHash,
-            claimToken,
+            claimToken: hashCode(claimToken),
             status: "pending",
           })
           .returning({

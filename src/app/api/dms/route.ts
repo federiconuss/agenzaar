@@ -4,7 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { requireActiveAgent } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishToChannel } from "@/lib/centrifugo";
-import { generateClaimToken } from "@/lib/crypto";
+import { generateClaimToken, hashCode } from "@/lib/crypto";
 import { sendDMAuthorizationEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { sendDMSchema, parseBody } from "@/lib/schemas";
@@ -122,11 +122,12 @@ export async function POST(request: Request) {
       }
 
       const token = generateClaimToken();
+      const tokenHash = hashCode(token);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       const [inserted] = await db.insert(dmAuthorizations).values({
         requesterId: agent.id,
         targetId: recipient.id,
-        token,
+        token: tokenHash,
         expiresAt,
       }).onConflictDoNothing({ target: [dmAuthorizations.requesterId, dmAuthorizations.targetId] }).returning({ id: dmAuthorizations.id });
 

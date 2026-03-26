@@ -28,10 +28,19 @@ export async function POST(request: Request) {
       UNIQUE("requester_id", "target_id")
     )`);
 
+    // Make dm_authorizations.token nullable (must run before backfill inserts with NULL)
+    await db.execute(sql`ALTER TABLE "dm_authorizations" ALTER COLUMN "token" DROP NOT NULL`);
+    // Drop unique constraint on token (nullified tokens would violate it)
+    await db.execute(sql`DO $$ BEGIN
+      ALTER TABLE "dm_authorizations" DROP CONSTRAINT IF EXISTS "dm_authorizations_token_unique";
+    EXCEPTION WHEN undefined_object THEN null;
+    END $$`);
+
     // --- Migrate existing conversations to approved authorizations (BOTH directions) ---
+    // Decided authorizations have null tokens (invalidated after decision)
     // Direction 1: agent1 → agent2
     await db.execute(sql`INSERT INTO "dm_authorizations" ("requester_id", "target_id", "status", "token", "decided_at", "created_at")
-      SELECT c.agent1_id, c.agent2_id, 'approved', md5(random()::text || clock_timestamp()::text), NOW(), c.created_at
+      SELECT c.agent1_id, c.agent2_id, 'approved', NULL, NOW(), c.created_at
       FROM conversations c
       WHERE NOT EXISTS (
         SELECT 1 FROM dm_authorizations da
@@ -39,7 +48,7 @@ export async function POST(request: Request) {
       )`);
     // Direction 2: agent2 → agent1
     await db.execute(sql`INSERT INTO "dm_authorizations" ("requester_id", "target_id", "status", "token", "decided_at", "created_at")
-      SELECT c.agent2_id, c.agent1_id, 'approved', md5(random()::text || clock_timestamp()::text), NOW(), c.created_at
+      SELECT c.agent2_id, c.agent1_id, 'approved', NULL, NOW(), c.created_at
       FROM conversations c
       WHERE NOT EXISTS (
         SELECT 1 FROM dm_authorizations da
@@ -59,6 +68,19 @@ export async function POST(request: Request) {
     await db.execute(sql`ALTER TABLE "dm_authorizations" ADD COLUMN IF NOT EXISTS "expires_at" TIMESTAMPTZ`);
     // Set expiration on pending DM auth tokens that don't have one (7 days from creation)
     await db.execute(sql`UPDATE "dm_authorizations" SET "expires_at" = "created_at" + INTERVAL '7 days' WHERE "expires_at" IS NULL AND "status" = 'pending'`);
+
+    // --- Token hashing migration (idempotent) ---
+    // Hash raw claim tokens (unhashed tokens are 64-char hex, hashed are also 64-char hex SHA-256)
+    // Detect unhashed by checking if the value changes when hashed — skip already-hashed tokens
+    await db.execute(sql`UPDATE "agents" SET "claim_token" = encode(sha256("claim_token"::bytea), 'hex')
+      WHERE "claim_token" IS NOT NULL AND length("claim_token") = 64
+      AND encode(sha256("claim_token"::bytea), 'hex') != "claim_token"`);
+    // Hash raw DM auth tokens (same logic)
+    await db.execute(sql`UPDATE "dm_authorizations" SET "token" = encode(sha256("token"::bytea), 'hex')
+      WHERE "token" IS NOT NULL AND length("token") = 64
+      AND encode(sha256("token"::bytea), 'hex') != "token"`);
+    // Nullify tokens on already-decided DM authorizations
+    await db.execute(sql`UPDATE "dm_authorizations" SET "token" = NULL WHERE "status" != 'pending' AND "token" IS NOT NULL`);
 
     // --- Performance indexes (idempotent) ---
     const indexDefs = [

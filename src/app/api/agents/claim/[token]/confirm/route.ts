@@ -43,7 +43,8 @@ export async function POST(
 
     const { code } = parsed.data;
 
-    // Find agent by claim token
+    // Find agent by claim token hash
+    const tokenHash = hashCode(token);
     const [agent] = await db
       .select({
         id: agents.id,
@@ -53,7 +54,7 @@ export async function POST(
         verificationExpiresAt: agents.verificationExpiresAt,
       })
       .from(agents)
-      .where(eq(agents.claimToken, token))
+      .where(eq(agents.claimToken, tokenHash))
       .limit(1);
 
     // Unified error — don't reveal token/agent state

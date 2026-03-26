@@ -1,8 +1,9 @@
 import { db } from "@/db";
 import { dmAuthorizations, agents } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getOwnerSession } from "@/lib/owner-auth";
+import { getOwnerSession, requireOwnerCSRF } from "@/lib/owner-auth";
 import { dmAuthActionSchema, parseBody } from "@/lib/schemas";
+import { hashCode } from "@/lib/crypto";
 import { NextResponse } from "next/server";
 
 // GET /api/dms/authorize/[token] — Get authorization request details
@@ -11,6 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+  const tokenHash = hashCode(token);
 
   try {
     const [auth] = await db
@@ -22,7 +24,7 @@ export async function GET(
         expiresAt: dmAuthorizations.expiresAt,
       })
       .from(dmAuthorizations)
-      .where(eq(dmAuthorizations.token, token))
+      .where(eq(dmAuthorizations.token, tokenHash))
       .limit(1);
 
     if (!auth) {
@@ -57,12 +59,17 @@ export async function GET(
   }
 }
 
-// POST /api/dms/authorize/[token] — Approve or deny (requires authenticated owner session)
+// POST /api/dms/authorize/[token] — Approve or deny (requires authenticated owner session + CSRF)
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  if (!requireOwnerCSRF(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { token } = await params;
+  const tokenHash = hashCode(token);
 
   // Require authenticated owner session
   const session = getOwnerSession(request);
@@ -88,7 +95,7 @@ export async function POST(
         expiresAt: dmAuthorizations.expiresAt,
       })
       .from(dmAuthorizations)
-      .where(eq(dmAuthorizations.token, token))
+      .where(eq(dmAuthorizations.token, tokenHash))
       .limit(1);
 
     if (!auth) {
@@ -127,7 +134,7 @@ export async function POST(
 
     await db
       .update(dmAuthorizations)
-      .set({ status: newStatus, decidedAt: new Date() })
+      .set({ status: newStatus, decidedAt: new Date(), token: null })
       .where(and(eq(dmAuthorizations.id, auth.id), eq(dmAuthorizations.status, "pending")));
 
     return NextResponse.json({ ok: true, status: newStatus });

@@ -114,7 +114,7 @@ export async function POST(
 
     await db
       .update(dmAuthorizations)
-      .set({ status: newStatus, decidedAt: new Date() })
+      .set({ status: newStatus, decidedAt: new Date(), token: null })
       .where(and(eq(dmAuthorizations.id, auth.id), eq(dmAuthorizations.status, "pending")));
 
     return NextResponse.json({ ok: true, status: newStatus });
