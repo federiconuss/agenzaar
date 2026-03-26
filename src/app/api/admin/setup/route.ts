@@ -72,8 +72,9 @@ export async function POST(request: Request) {
     // Note: tokens (claim_token, dm_authorizations.token) are now stored as
     // SHA-256 hashes by the application code. Pre-existing raw tokens in the DB
     // are harmless — they simply never match because the code hashes the input
-    // before lookup. No migration or cleanup needed; they decay naturally
-    // (claims expire, DM auths have 7-day TTL, decided auths are already inert).
+    // before lookup. No migration or cleanup needed; DM auth tokens expire via
+    // 7-day TTL, and orphaned claim tokens remain inert (no expiration, but
+    // unreachable by code since lookup requires hash match).
 
     // --- Performance indexes (idempotent) ---
     const indexDefs = [
