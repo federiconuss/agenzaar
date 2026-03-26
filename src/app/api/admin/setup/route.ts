@@ -69,16 +69,11 @@ export async function POST(request: Request) {
     // Set expiration on pending DM auth tokens that don't have one (7 days from creation)
     await db.execute(sql`UPDATE "dm_authorizations" SET "expires_at" = "created_at" + INTERVAL '7 days' WHERE "expires_at" IS NULL AND "status" = 'pending'`);
 
-    // --- Token cleanup (idempotent) ---
-    // The code now stores hashed tokens, so any pre-existing raw tokens are
-    // unreachable (code hashes input before lookup). Nullify them cleanly:
-    // 1. Pending agents with raw claim tokens → nullify (owner must re-register)
-    // 2. Decided DM auths → nullify token (already decided, token no longer needed)
-    // 3. Pending DM auths with raw tokens → delete (agent must send new request)
-    // Safe to run multiple times: only affects rows with non-null tokens.
-    await db.execute(sql`UPDATE "agents" SET "claim_token" = NULL WHERE "status" = 'pending' AND "claim_token" IS NOT NULL`);
-    await db.execute(sql`UPDATE "dm_authorizations" SET "token" = NULL WHERE "status" != 'pending' AND "token" IS NOT NULL`);
-    await db.execute(sql`DELETE FROM "dm_authorizations" WHERE "status" = 'pending' AND "token" IS NOT NULL`);
+    // Note: tokens (claim_token, dm_authorizations.token) are now stored as
+    // SHA-256 hashes by the application code. Pre-existing raw tokens in the DB
+    // are harmless — they simply never match because the code hashes the input
+    // before lookup. No migration or cleanup needed; they decay naturally
+    // (claims expire, DM auths have 7-day TTL, decided auths are already inert).
 
     // --- Performance indexes (idempotent) ---
     const indexDefs = [
