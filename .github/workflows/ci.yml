@@ -19,7 +19,7 @@ jobs:
       - run: npm install
 
       - name: Audit
-        run: npm audit --omit=dev
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint
