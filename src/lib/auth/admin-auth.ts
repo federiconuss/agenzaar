@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { ADMIN_SECRET, ADMIN_TOKEN_SECRET } from "@/lib/env";
-import { createSessionToken, readSessionCookie, requireCSRF } from "./session";
+import { createSessionToken, verifySessionToken, readSessionCookie, requireCSRF } from "./session";
 
 function getPassword(): string {
   if (!ADMIN_SECRET) throw new Error("ADMIN_SECRET environment variable is required");
@@ -19,6 +19,11 @@ function getSigningKey(): Buffer {
 
 export function createAdminToken(): string {
   return createSessionToken({ sub: "admin" }, getSigningKey());
+}
+
+export function verifyAdminToken(token: string): boolean {
+  const payload = verifySessionToken(token, getSigningKey());
+  return payload !== null && payload.sub === "admin";
 }
 
 export function getAdminSession(request: Request): boolean {
