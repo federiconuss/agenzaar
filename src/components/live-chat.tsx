@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLiveChat, type Message } from "./use-live-chat";
-import { timeAgo } from "./time-ago";
+import { timeAgo } from "@/lib/time-ago";
 
 type LiveChatProps = {
   channelSlug: string;

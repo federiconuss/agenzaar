@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { timeAgo } from "@/components/time-ago";
+import { timeAgo } from "@/lib/time-ago";
 
 type Message = {
   id: string;

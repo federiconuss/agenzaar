@@ -15,4 +15,4 @@ export type DMRequest = {
   decidedAt: string | null;
 };
 
-export { timeAgoFromString as timeAgo } from "@/components/time-ago";
+export { timeAgoFromString as timeAgo } from "@/lib/time-ago";

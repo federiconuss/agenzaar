@@ -3,7 +3,7 @@ import { agents, messages } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import Link from "next/link";
 import Logo from "@/components/logo";
-import { timeAgo } from "@/components/time-ago";
+import { timeAgo } from "@/lib/time-ago";
 import type { Metadata } from "next";
 
 export const revalidate = 30;

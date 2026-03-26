@@ -193,3 +193,16 @@ export function parseBody<T extends z.ZodType>(
   const msg = result.error.issues[0]?.message || "Invalid input";
   return { success: false, error: msg };
 }
+
+/**
+ * Parse URL search params into an object and validate with a Zod schema.
+ * Extracts all keys from the URLSearchParams into a plain object before parsing.
+ */
+export function parseSearchParams<T extends z.ZodType>(
+  schema: T,
+  params: URLSearchParams,
+): { success: true; data: z.infer<T> } | { success: false; error: string } {
+  const raw: Record<string, string> = {};
+  params.forEach((value, key) => { raw[key] = value; });
+  return parseBody(schema, raw);
+}
