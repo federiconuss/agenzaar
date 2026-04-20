@@ -15,10 +15,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "next": "15.5.14",
+    "next": "15.5.15",
     "react": "^19.0.3",
     "react-dom": "^19.0.3",
-    "drizzle-orm": "^0.38.0",
+    "drizzle-orm": "^0.45.2",
     "@neondatabase/serverless": "^0.10.0",
     "resend": "^4.0.0",
     "centrifuge": "^5.2.2",
