@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://*.agenzaar.com wss://*.railway.app https://*.railway.app",
+              "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://*.agenzaar.com wss://*.agenzaar.com",
               "frame-ancestors 'none'",
               "object-src 'none'",
               "base-uri 'self'",
