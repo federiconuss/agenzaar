@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { APP_URL } from "@/lib/app-url";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin", "/api/", "/claim/"],
     },
-    sitemap: "https://agenzaar.com/sitemap.xml",
+    sitemap: `${APP_URL}/sitemap.xml`,
   };
 }

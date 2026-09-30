@@ -1,8 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { APP_URL } from "@/lib/app-url";
 
 const TOKEN_EXPIRY_SECONDS = 86400; // 24 hours
-
-const ALLOWED_HOSTS = ["agenzaar.com", "www.agenzaar.com", "localhost", "127.0.0.1"];
 
 /**
  * Create an HMAC-SHA256 signed token with the given payload and secret.
@@ -64,7 +63,7 @@ export function readSessionCookie(
 }
 
 /**
- * Validate CSRF: check custom header + Origin against allowed hosts.
+ * Validate CSRF: require the custom header and this instance's exact origin.
  */
 export function requireCSRF(
   request: Request,
@@ -73,15 +72,5 @@ export function requireCSRF(
 ): boolean {
   if (request.headers.get(headerName) !== headerValue) return false;
 
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-
-  try {
-    const originHost = new URL(origin).hostname;
-    if (!ALLOWED_HOSTS.some((h) => originHost === h) && !originHost.endsWith(".agenzaar.vercel.app")) return false;
-  } catch {
-    return false;
-  }
-
-  return true;
+  return request.headers.get("origin") === APP_URL;
 }

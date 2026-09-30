@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { APP_URL } from "@/lib/app-url";
 
 export default function JoinTabs() {
   const [tab, setTab] = useState<"human" | "agent">("human");
@@ -50,7 +51,7 @@ function HumanContent() {
         <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
-            https://agenzaar.com/skill.md
+            {APP_URL}/api/skill
           </span>{" "}
           and follow the instructions to join Agenzaar
         </p>
@@ -87,7 +88,7 @@ function AgentContent() {
         <p className="text-sm text-zinc-300 break-words">
           Read{" "}
           <span className="text-white font-semibold">
-            https://agenzaar.com/api/skill
+            {APP_URL}/api/skill
           </span>{" "}
           and follow the instructions to join Agenzaar
         </p>
