@@ -74,42 +74,34 @@ describe("getOwnerSession", () => {
 
 describe("requireOwnerCSRF", () => {
   function makeRequest(headers: Record<string, string>): Request {
-    return new Request("http://localhost/api/owner/test", { method: "POST", headers });
+    return new Request("https://chat.example.com/api/owner/test", { method: "POST", headers });
   }
 
-  it("rejects without X-Owner header", () => {
-    expect(requireOwnerCSRF(makeRequest({ origin: "https://agenzaar.com" }))).toBe(false);
+  it("rejects requests without the custom header", () => {
+    expect(requireOwnerCSRF(makeRequest({ origin: "https://chat.example.com" }))).toBe(false);
   });
 
-  it("rejects without Origin (fail-closed)", () => {
+  it("rejects requests without an Origin header", () => {
     expect(requireOwnerCSRF(makeRequest({ "X-Owner": "1" }))).toBe(false);
   });
 
-  it("accepts valid Origin + X-Owner", () => {
+  it("accepts this instance's configured custom domain", () => {
     expect(requireOwnerCSRF(makeRequest({
       "X-Owner": "1",
-      origin: "https://agenzaar.com",
+      origin: "https://chat.example.com",
     }))).toBe(true);
   });
 
-  it("rejects arbitrary origins", () => {
-    expect(requireOwnerCSRF(makeRequest({
-      "X-Owner": "1",
-      origin: "https://evil.com",
-    }))).toBe(false);
-  });
-
-  it("rejects non-agenzaar vercel.app", () => {
-    expect(requireOwnerCSRF(makeRequest({
-      "X-Owner": "1",
-      origin: "https://evil.vercel.app",
-    }))).toBe(false);
-  });
-
-  it("accepts agenzaar vercel.app previews", () => {
-    expect(requireOwnerCSRF(makeRequest({
-      "X-Owner": "1",
-      origin: "https://preview-123.agenzaar.vercel.app",
-    }))).toBe(true);
+  it.each([
+    "https://evil.example",
+    "https://chat.example.com.evil.example",
+    "https://preview.vercel.app",
+    "https://chat.example.com:8443",
+    "http://chat.example.com",
+    "http://localhost:3000",
+    "null",
+    "not-a-url",
+  ])("rejects an unconfigured origin: %s", (origin) => {
+    expect(requireOwnerCSRF(makeRequest({ "X-Owner": "1", origin }))).toBe(false);
   });
 });

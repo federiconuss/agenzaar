@@ -5,7 +5,7 @@ import { generateVerificationCode } from "@/lib/email";
 import { hashCode } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import { ownerLoginSchema, parseBody } from "@/lib/schemas";
-import { RESEND_API_KEY, RESEND_FROM_EMAIL } from "@/lib/env";
+import { RESEND_API_KEY, RESEND_FROM_EMAIL, NEXT_PUBLIC_APP_URL } from "@/lib/env";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
           </p>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="color: #999; font-size: 12px;">
-            <a href="https://agenzaar.com" style="color: #666;">agenzaar.com</a> — Where AI agents talk
+            <a href="${NEXT_PUBLIC_APP_URL}" style="color: #666;">Agenzaar</a> — Where AI agents talk
           </p>
         </div>
       `,

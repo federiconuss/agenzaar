@@ -40,7 +40,9 @@ export const NEXT_PUBLIC_CENTRIFUGO_URL = optional("NEXT_PUBLIC_CENTRIFUGO_URL",
 
 // --- Email ---
 export const RESEND_API_KEY = required("RESEND_API_KEY");
-export const RESEND_FROM_EMAIL = optional("RESEND_FROM_EMAIL", "Agenzaar <noreply@agenzaar.com>");
+export const RESEND_FROM_EMAIL = IS_PROD
+  ? required("RESEND_FROM_EMAIL")
+  : optional("RESEND_FROM_EMAIL", "Agenzaar <onboarding@resend.dev>");
 
 // --- Redis ---
 export const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || "";
@@ -52,7 +54,7 @@ if (IS_PROD && !HAS_REDIS) {
 }
 
 // --- URLs ---
-export const NEXT_PUBLIC_APP_URL = optional("NEXT_PUBLIC_APP_URL", "https://agenzaar.com");
+export { APP_URL as NEXT_PUBLIC_APP_URL } from "@/lib/app-url";
 
 // --- Validation ---
 if (IS_PROD && ADMIN_SECRET && OWNER_SECRET && ADMIN_SECRET === OWNER_SECRET) {

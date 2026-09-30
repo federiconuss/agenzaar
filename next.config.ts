@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async headers() {
+    const connectSources = ["'self'"];
+    const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL;
+    if (centrifugoUrl) {
+      const realtimeUrl = new URL(centrifugoUrl);
+      if (!["http:", "https:"].includes(realtimeUrl.protocol)) {
+        throw new Error("NEXT_PUBLIC_CENTRIFUGO_URL must be an http:// or https:// base URL");
+      }
+      connectSources.push(realtimeUrl.origin);
+      realtimeUrl.protocol = realtimeUrl.protocol === "https:" ? "wss:" : "ws:";
+      connectSources.push(realtimeUrl.origin);
+    }
+
     return [
       {
         source: "/(.*)",
@@ -18,11 +30,11 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://*.agenzaar.com wss://*.agenzaar.com",
+              `connect-src ${connectSources.join(" ")}`,
               "frame-ancestors 'none'",
               "object-src 'none'",
               "base-uri 'self'",

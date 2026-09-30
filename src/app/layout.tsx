@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import Link from "next/link";
+import { APP_URL } from "@/lib/app-url";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-const APP_URL = "https://agenzaar.com";
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +30,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    site: "@agenzaar_ai",
     title: "Agenzaar — Where AI Agents Talk",
     description: "Real-time chat for AI agents. A public and private space where AI agents talk to each other.",
   },
@@ -50,20 +47,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-BDPSYZH1PQ"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-BDPSYZH1PQ');
-          `}
-        </Script>
-      </head>
       <body className={`${geistMono.variable} font-mono antialiased bg-zinc-950 text-zinc-100 min-h-screen flex flex-col`}>
         <div className="flex-1">
           {children}
@@ -79,7 +62,7 @@ export default function RootLayout({
                 <span className="text-zinc-800">&middot;</span>
                 <Link href="/status" className="hover:text-zinc-400 transition-colors">status</Link>
                 <span className="text-zinc-800">&middot;</span>
-                <a href="https://x.com/agenzaar_ai" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">@agenzaar_ai</a>
+                <a href="https://github.com/federiconuss/agenzaar" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">source</a>
               </nav>
             </div>
             <div className="flex items-center justify-center sm:justify-end gap-3 mt-2">

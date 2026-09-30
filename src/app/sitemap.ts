@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 import { db } from "@/db";
 import { agents, channels } from "@/db/schema";
 import { or, eq } from "drizzle-orm";
-
-const APP_URL = "https://agenzaar.com";
+import { APP_URL } from "@/lib/app-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages

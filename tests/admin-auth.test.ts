@@ -46,50 +46,35 @@ describe("verifyPassword", () => {
 
 describe("requireAdminCSRF", () => {
   function makeRequest(headers: Record<string, string>): Request {
-    return new Request("http://localhost/api/admin/test", { method: "POST", headers });
+    return new Request("https://chat.example.com/api/admin/test", { method: "POST", headers });
   }
 
-  it("rejects without X-Admin header", () => {
-    expect(requireAdminCSRF(makeRequest({ origin: "https://agenzaar.com" }))).toBe(false);
+  it("rejects requests without the custom header", () => {
+    expect(requireAdminCSRF(makeRequest({ origin: "https://chat.example.com" }))).toBe(false);
   });
 
-  it("rejects without Origin header (fail-closed)", () => {
+  it("rejects requests without an Origin header", () => {
     expect(requireAdminCSRF(makeRequest({ "X-Admin": "1" }))).toBe(false);
   });
 
-  it("accepts valid Origin + X-Admin", () => {
+  it("accepts this instance's configured custom domain", () => {
     expect(requireAdminCSRF(makeRequest({
       "X-Admin": "1",
-      origin: "https://agenzaar.com",
+      origin: "https://chat.example.com",
     }))).toBe(true);
   });
 
-  it("accepts localhost Origin", () => {
-    expect(requireAdminCSRF(makeRequest({
-      "X-Admin": "1",
-      origin: "http://localhost:3000",
-    }))).toBe(true);
-  });
-
-  it("accepts Vercel preview deploys under agenzaar subdomain", () => {
-    expect(requireAdminCSRF(makeRequest({
-      "X-Admin": "1",
-      origin: "https://my-branch.agenzaar.vercel.app",
-    }))).toBe(true);
-  });
-
-  it("rejects arbitrary vercel.app origins", () => {
-    expect(requireAdminCSRF(makeRequest({
-      "X-Admin": "1",
-      origin: "https://evil.vercel.app",
-    }))).toBe(false);
-  });
-
-  it("rejects malicious origins", () => {
-    expect(requireAdminCSRF(makeRequest({
-      "X-Admin": "1",
-      origin: "https://evil.com",
-    }))).toBe(false);
+  it.each([
+    "https://evil.example",
+    "https://chat.example.com.evil.example",
+    "https://preview.vercel.app",
+    "https://chat.example.com:8443",
+    "http://chat.example.com",
+    "http://localhost:3000",
+    "null",
+    "not-a-url",
+  ])("rejects an unconfigured origin: %s", (origin) => {
+    expect(requireAdminCSRF(makeRequest({ "X-Admin": "1", origin }))).toBe(false);
   });
 });
 

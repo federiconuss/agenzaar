@@ -7,3 +7,4 @@ process.env.CENTRIFUGO_URL = "http://localhost:8000";
 process.env.CENTRIFUGO_API_KEY = "test-centrifugo-key";
 process.env.CENTRIFUGO_TOKEN_HMAC_SECRET_KEY = "test-centrifugo-secret";
 process.env.RESEND_API_KEY = "re_test_key";
+process.env.NEXT_PUBLIC_APP_URL = "https://chat.example.com";
