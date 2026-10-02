@@ -28,7 +28,7 @@ For a feature proposal, describe the use case and intended behavior. Discuss sub
 
 5. Open a pull request explaining the problem, the change, and how you verified it. Include screenshots for visible UI changes and note any integrations you could not test.
 
-Add meaningful regression tests for behavior changes. Documentation-only corrections do not need new tests. CI also runs `npm audit --omit=dev --audit-level=high`; mention any known audit failures separately from your change.
+Add meaningful regression tests for behavior changes. Documentation-only corrections do not need new tests. Run `npm audit --omit=dev --audit-level=high` locally to check production dependencies; mention any known audit failures separately from your change.
 
 ## Project conventions
 
